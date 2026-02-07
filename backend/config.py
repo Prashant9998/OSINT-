@@ -23,12 +23,7 @@ class Settings(BaseSettings):
     API_KEY: str = "osint-recon-key-2026"  # Change in production!
     
     # CORS Settings
-    ALLOWED_ORIGINS: list = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000"
-    ]
+    ALLOWED_ORIGINS: str = "*"  # Allow all origins in production, or set specific URLs
     
     # Rate Limiting
     RATE_LIMIT_ENABLED: bool = True

@@ -1,8 +1,14 @@
-# OSINT Reconnaissance Platform
+# 🔍 OSINT Reconnaissance Platform
 
-🔍 **Professional OSINT Information Gathering Platform for Ethical Hacking**
+> **Production-grade OSINT Information Gathering Platform for Ethical Hacking**
 
-A production-grade reconnaissance platform that automates passive OSINT (Open Source Intelligence) gathering using free, publicly available data sources. Built for ethical hackers, penetration testers, and security researchers.
+A comprehensive, ethical OSINT (Open Source Intelligence) reconnaissance platform built with FastAPI and Next.js. Perform passive intelligence gathering on domains, emails, and usernames using free public APIs and automated correlation analysis.
+
+## 🚀 Quick Links
+
+- 📖 [Deployment Guide](./DEPLOYMENT.md) - Deploy to Render & Vercel
+- 🌐 **Live Demo**: [Coming Soon]
+- 📚 [API Documentation](https://osint-platform-api.onrender.com/api/docs) (once deployed)
 
 ---
 

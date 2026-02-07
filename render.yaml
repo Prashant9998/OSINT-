@@ -1,0 +1,24 @@
+services:
+  # Backend API Service
+  - type: web
+    name: osint-platform-api
+    env: python
+    region: oregon
+    buildCommand: cd backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: API_KEY
+        generateValue: true
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG_MODE
+        value: false
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: RATE_LIMIT_REQUESTS
+        value: 10
+      - key: RATE_LIMIT_PERIOD
+        value: 60
+    autoDeploy: true
