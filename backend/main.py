@@ -72,8 +72,8 @@ scan_results_cache = {}
 async def startup_event():
     """Initialize database and resources on startup"""
     await init_db()
-    print(f"✅ {settings.APP_NAME} v{settings.APP_VERSION} started successfully")
-    print(f"📡 API available at: {settings.API_PREFIX}")
+    print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started successfully")
+    print(f"[API] Available at: {settings.API_PREFIX}")
 
 
 @app.get("/")
