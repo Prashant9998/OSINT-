@@ -11,18 +11,25 @@ from models import UsernamePlatform, UsernameIntelligence
 
 # Platform configurations
 PLATFORMS = {
+    # Developer Platforms
     'GitHub': 'https://github.com/{}',
     'GitLab': 'https://gitlab.com/{}',
-    'Reddit': 'https://reddit.com/user/{}',
-    'Twitter': 'https://twitter.com/{}',
     'Stack Overflow': 'https://stackoverflow.com/users/{}',
     'Dev.to': 'https://dev.to/{}',
-    'Medium': 'https://medium.com/@{}',
-    'Hacker News': 'https://news.ycombinator.com/user?id={}',
-    'Replit': 'https://replit.com/@{}',
     'CodePen': 'https://codepen.io/{}',
+    'Replit': 'https://replit.com/@{}',
     'npm': 'https://npmjs.com/~{}',
     'PyPI': 'https://pypi.org/user/{}/',
+    
+    # Social Media Platforms
+    'Instagram': 'https://instagram.com/{}',
+    'Facebook': 'https://facebook.com/{}',
+    'Reddit': 'https://reddit.com/user/{}',
+    'Twitter': 'https://twitter.com/{}',
+    'Medium': 'https://medium.com/@{}',
+    
+    # Tech/News Platforms
+    'Hacker News': 'https://news.ycombinator.com/user?id={}',
 }
 
 
@@ -118,11 +125,20 @@ def generate_username_insights(platforms_found: List[UsernamePlatform], github_i
             insights.append("📌 Active developer - check repos for exposed configs")
     
     # Platform-specific insights
-    dev_platforms = ['GitHub', 'GitLab', 'Stack Overflow', 'Dev.to', 'CodePen', 'Replit']
+    dev_platforms = ['GitHub', 'GitLab', 'Stack Overflow', 'Dev.to', 'CodePen', 'Replit', 'npm', 'PyPI']
+    social_platforms = ['Instagram', 'Facebook', 'Reddit', 'Twitter', 'Medium']
+    
     dev_count = sum(1 for p in platforms_found if p.profile_found and p.platform in dev_platforms)
+    social_count = sum(1 for p in platforms_found if p.profile_found and p.platform in social_platforms)
     
     if dev_count >= 3:
         insights.append("📌 Developer present on multiple coding platforms - check for accidental leaks")
+    
+    if social_count >= 3:
+        insights.append("📌 Active social media presence - public profiles may reveal personal information")
+    
+    if social_count >= 1 and dev_count >= 1:
+        insights.append("📌 Mixed digital footprint: both professional and social platforms found")
     
     return insights
 
