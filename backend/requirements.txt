@@ -6,8 +6,8 @@ pydantic-settings==2.1.0
 python-multipart==0.0.6
 
 # OSINT Tools - WHOIS and DNS
-python-whois==0.8.0
-dnspython==2.4.2
+python-whois
+dnspython
 
 # HTTP Client for API calls
 aiohttp==3.9.1
@@ -28,7 +28,7 @@ aiosqlite==0.19.0
 
 # PDF Report Generation
 reportlab==4.0.9
-pillow==10.2.0
+pillow
 
 # HTML Parsing and Web Scraping
 beautifulsoup4==4.12.3
