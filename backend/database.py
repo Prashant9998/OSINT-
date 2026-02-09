@@ -60,8 +60,13 @@ class AbuseLog(Base):
 
 
 # Database Engine
+# Check for Railway/Heroku postgres:// URL and convert to postgresql+asyncpg://
+database_url = settings.DATABASE_URL
+if database_url and database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    database_url,
     echo=settings.DEBUG_MODE,
     future=True
 )

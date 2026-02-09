@@ -53,3 +53,7 @@ pytest==7.4.4
 pytest-asyncio==0.23.3
 pytest-cov==4.1.0
 httpx==0.26.0
+
+# Database Drivers
+asyncpg>=0.29.0
+psycopg2-binary>=2.9.9
