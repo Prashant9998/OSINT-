@@ -1,4 +1,1 @@
-# Add proper type annotation for BLOCKED_TARGETS
-from typing import List
-
-BLOCKED_TARGETS: List[str] = [...]  # existing content of BLOCKED_TARGETS
+BLOCKED_TARGETS: List[str] = ["example1.com", "example2.com"]  # Add your blocked targets here
