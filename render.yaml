@@ -1,25 +1,46 @@
 services:
-  # Backend API Service
+  # Backend Service (FastAPI)
   - type: web
-    name: osint-platform-api
+    name: osint-backend
     env: python
-    region: oregon
-    buildCommand: pip install -r backend/requirements.txt
+    buildCommand: cd backend && pip install -r requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
-        value: "3.11.0"
-      - key: API_KEY
-        generateValue: true
+        value: 3.11.0
+      - key: DATABASE_URL
+        fromDatabase:
+          name: osint-db
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
-      - key: DEBUG_MODE
-        value: "false"
-      - key: ALLOWED_ORIGINS
-        value: "*"
-      - key: RATE_LIMIT_REQUESTS
-        value: "10"
-      - key: RATE_LIMIT_PERIOD
-        value: "60"
+      - key: API_KEY
+        generateValue: true
+      # Add other keys as placeholders (User needs to fill these in Render Dashboard)
+      - key: SHODAN_API_KEY
+        value: placeholder_key
+      - key: VIRUSTOTAL_API_KEY
+        value: placeholder_key
     autoDeploy: true
 
+  # Frontend Service (Next.js)
+  - type: web
+    name: osint-frontend
+    env: node
+    buildCommand: cd frontend && npm install && npm run build
+    startCommand: cd frontend && npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: osint-backend
+          property: url
+      - key: NODE_ENV
+        value: production
+    autoDeploy: true
+
+databases:
+  - name: osint-db
+    databaseName: osint
+    user: osint_user
+    plan: free # Render Free Tier PostgreSQL
