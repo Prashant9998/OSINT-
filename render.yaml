@@ -34,7 +34,6 @@ services:
     envVars:
       - key: NEXT_PUBLIC_API_URL
         fromService:
-          type: web
           name: osint-backend
           property: url
       - key: NODE_ENV
