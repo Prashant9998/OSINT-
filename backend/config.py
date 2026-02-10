@@ -39,7 +39,20 @@ class Settings(BaseSettings):
     MAX_GITHUB_RESULTS: int = 50
     
     # GitHub API (Optional - for higher rate limits)
-    GITHUB_TOKEN: Optional[str] = None  # Set via environment variable
+    GITHUB_TOKEN: Optional[str] = None
+
+    # HIBP API (Optional - for breach checks)
+    HIBP_API_KEY: Optional[str] = None
+
+    # Advanced OSINT APIs (Optional)
+    SHODAN_API_KEY: Optional[str] = None
+    VIRUSTOTAL_API_KEY: Optional[str] = None
+    HUNTER_API_KEY: Optional[str] = None
+    SECURITYTRAILS_API_KEY: Optional[str] = None
+    URLSCAN_API_KEY: Optional[str] = None
+    ABSTRACT_API_KEY: Optional[str] = None
+    GREYNOISE_API_KEY: Optional[str] = None
+    GOOGLE_SAFE_BROWSING_KEY: Optional[str] = None
     
     # Security Settings
     SECRET_KEY: str = "your-secret-key-change-in-production"

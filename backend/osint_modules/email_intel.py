@@ -6,8 +6,9 @@ Corporate email intelligence and validation
 import dns.resolver
 import aiohttp
 import re
-from typing import List, Optional
-from models import EmailIntelligence
+from typing import List, Optional, Dict, Any
+from models import EmailIntelligence, HunterData
+from config import settings
 import asyncio
 
 
@@ -191,3 +192,37 @@ async def gather_email_intelligence(email: str) -> EmailIntelligence:
     email_intel.risk_assessment = await assess_email_risk(email_intel)
     
     return email_intel
+
+
+async def gather_hunter_domain_search(domain: str) -> Optional[HunterData]:
+    """
+    Search for emails associated with a domain using Hunter.io
+    """
+    if not settings.HUNTER_API_KEY:
+        return None
+        
+    try:
+        url = f"https://api.hunter.io/v2/domain-search?domain={domain}&api_key={settings.HUNTER_API_KEY}&limit=10"
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    data = data.get('data', {})
+                    
+                    return HunterData(
+                        domain=domain,
+                        organization=data.get('organization'),
+                        country=data.get('country'),
+                        state=data.get('state'),
+                        emails=data.get('emails', []),
+                        pattern=data.get('pattern'),
+                        score=0 # Hunter doesn't give a domain score, but we can infer one later
+                    )
+                elif response.status == 401:
+                    print("Invalid Hunter.io API Key")
+                    return None
+                    
+    except Exception as e:
+        print(f"Hunter.io error for {domain}: {e}")
+        return None

@@ -27,8 +27,17 @@ from security import verify_api_key, get_client_ip, generate_scan_id, is_safe_ta
 from osint_modules.domain_intel import gather_domain_intelligence
 from osint_modules.tech_fingerprint import fingerprint_technology_stack
 from osint_modules.github_intel import gather_github_intelligence
-from osint_modules.email_intel import gather_email_intelligence
+from osint_modules.email_intel import gather_email_intelligence, gather_hunter_domain_search
 from osint_modules.username_intel import gather_username_intelligence
+
+# Advanced Modules
+from osint_modules.shodan_intel import gather_shodan_intelligence
+from osint_modules.virustotal_intel import gather_virustotal_intelligence
+from osint_modules.securitytrails_intel import gather_securitytrails_intelligence
+from osint_modules.urlscan_intel import gather_urlscan_intelligence
+from osint_modules.greynoise_intel import gather_greynoise_intelligence
+from osint_modules.abstract_intel import gather_abstract_intelligence
+from osint_modules.safebrowsing_intel import check_safe_browsing
 
 # Intelligence
 from intelligence.correlator import correlate_intelligence
@@ -246,6 +255,47 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
                 deep_scan=scan_request.deep_scan
             )
             modules_executed.append("github_intel")
+            
+            # --- Advanced Domain Modules ---
+            # 1. SecurityTrails (DNS History)
+            result.securitytrails_data = await gather_securitytrails_intelligence(scan_request.target)
+            if result.securitytrails_data: modules_executed.append("securitytrails")
+            
+            # 2. VirusTotal (Domain Rep)
+            result.virustotal_data = await gather_virustotal_intelligence(scan_request.target, is_ip=False)
+            if result.virustotal_data: modules_executed.append("virustotal")
+            
+            # 3. URLScan.io (Visuals) - Scan the homepage
+            result.urlscan_data = await gather_urlscan_intelligence(f"https://{scan_request.target}")
+            if result.urlscan_data: modules_executed.append("urlscan")
+            
+            # 4. Google Safe Browsing
+            result.safebrowsing_data = await check_safe_browsing(f"https://{scan_request.target}")
+            if result.safebrowsing_data: modules_executed.append("safebrowsing")
+            
+            # 5. Hunter.io (Email Recovery)
+            result.hunter_data = await gather_hunter_domain_search(scan_request.target)
+            if result.hunter_data: modules_executed.append("hunter")
+            
+            # 6. Abstract API (Company Enrichment - if meaningful for domain)
+            # Skipping for generic domain scan to save credits/time, usually better for specific entities
+            
+            # 7. Shodan & GreyNoise (Require IP)
+            # We need to resolve IP first. domain_intel does this.
+            if result.domain_intel and result.domain_intel.ip_addresses:
+                primary_ip = result.domain_intel.ip_addresses[0]
+                
+                # Shodan
+                result.shodan_data = await gather_shodan_intelligence(primary_ip)
+                if result.shodan_data: modules_executed.append("shodan")
+                
+                # GreyNoise
+                result.greynoise_data = await gather_greynoise_intelligence(primary_ip)
+                if result.greynoise_data: modules_executed.append("greynoise")
+                
+                # Abstract IP Geolocation
+                result.abstract_data = await gather_abstract_intelligence(primary_ip, "ip")
+                if result.abstract_data: modules_executed.append("abstract")
         
         # Correlate intelligence
         result.correlated_intel = correlate_intelligence(
@@ -254,7 +304,15 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
             tech_stack=result.tech_stack,
             github_intel=result.github_intel,
             email_intel=result.email_intel,
-            username_intel=result.username_intel
+            username_intel=result.username_intel,
+            # Pass new data to correlator (needs update in correlator signature)
+            shodan_data=result.shodan_data,
+            virustotal_data=result.virustotal_data,
+            hunter_data=result.hunter_data,
+            securitytrails_data=result.securitytrails_data,
+            urlscan_data=result.urlscan_data,
+            greynoise_data=result.greynoise_data,
+            safebrowsing_data=result.safebrowsing_data
         )
         
         # Update result

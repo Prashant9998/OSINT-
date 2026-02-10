@@ -7,6 +7,8 @@ from typing import List, Optional
 from models import (
     DomainIntelligence, TechnologyStack, GitHubIntelligence,
     EmailIntelligence, UsernameIntelligence,
+    ShodanData, VirusTotalData, HunterData, SecurityTrailsData,
+    URLScanData, GreyNoiseData, AbstractData, SafeBrowsingData,
     CorrelatedIntelligence, AttackSurfaceItem, RiskLevel
 )
 
@@ -16,7 +18,14 @@ def calculate_risk_score(
     tech_stack: Optional[TechnologyStack],
     github_intel: Optional[GitHubIntelligence],
     email_intel: Optional[EmailIntelligence],
-    username_intel: Optional[UsernameIntelligence]
+    username_intel: Optional[UsernameIntelligence],
+    shodan_data: Optional[ShodanData] = None,
+    virustotal_data: Optional[VirusTotalData] = None,
+    hunter_data: Optional[HunterData] = None,
+    securitytrails_data: Optional[SecurityTrailsData] = None,
+    urlscan_data: Optional[URLScanData] = None,
+    greynoise_data: Optional[GreyNoiseData] = None,
+    safebrowsing_data: Optional[SafeBrowsingData] = None
 ) -> tuple[int, RiskLevel]:
     """
     Calculate overall risk score (0-100) and risk level
@@ -85,6 +94,34 @@ def calculate_risk_score(
             risk_score += 3
         if username_intel.github_profile:
             risk_score += 2
+            
+    # Shodan Risk Factors (Verified Infrastructure)
+    if shodan_data:
+        # Open ports
+        risk_score += min(len(shodan_data.ports) * 2, 10)
+        # Vulnerabilities
+        risk_score += len(shodan_data.vulnerabilities) * 5
+        
+    # VirusTotal Risk Factors (Threat Intel)
+    if virustotal_data:
+        if virustotal_data.malicious_count > 0:
+            risk_score += 20  # Confirmed malicious
+        elif virustotal_data.suspicious_count > 0:
+            risk_score += 10
+            
+    # Safe Browsing Risk
+    if safebrowsing_data and not safebrowsing_data.is_safe:
+        risk_score += 30  # Critical threat
+        
+    # GreyNoise (Is it a known scanner?)
+    if greynoise_data and greynoise_data.noise:
+        # If it's known noise, it might actually REDUCE specific targeted risk, 
+        # but for now we consider it neutral or slight info.
+        pass
+        
+    # Hunter.io (Corporate Exposure)
+    if hunter_data:
+        risk_score += min(len(hunter_data.emails), 10)
     
     # Normalize to 0-100
     risk_score = min(risk_score, max_score)
@@ -105,7 +142,10 @@ def calculate_risk_score(
 def build_attack_surface(
     domain_intel: Optional[DomainIntelligence],
     tech_stack: Optional[TechnologyStack],
-    github_intel: Optional[GitHubIntelligence]
+    github_intel: Optional[GitHubIntelligence],
+    shodan_data: Optional[ShodanData] = None,
+    virustotal_data: Optional[VirusTotalData] = None,
+    hunter_data: Optional[HunterData] = None
 ) -> List[AttackSurfaceItem]:
     """
     Build comprehensive attack surface map
@@ -158,6 +198,36 @@ def build_attack_surface(
                 risk_level=finding.risk_level,
                 description=f"{finding.finding_type.upper()} found in {finding.repository}",
                 source_modules=["github_intel"]
+            ))
+            
+    # Shodan (Open Ports)
+    if shodan_data:
+        for port in shodan_data.ports:
+            attack_surface.append(AttackSurfaceItem(
+                item_type="open_port",
+                name=f"Port {port}",
+                risk_level=RiskLevel.MEDIUM if port in [80, 443] else RiskLevel.HIGH,
+                description=f"Open port {port} detected on {shodan_data.ip}",
+                source_modules=["shodan"]
+            ))
+        for vuln in shodan_data.vulnerabilities:
+            attack_surface.append(AttackSurfaceItem(
+                item_type="vulnerability",
+                name=vuln,
+                risk_level=RiskLevel.CRITICAL,
+                description=f"Vulnerability {vuln} detected",
+                source_modules=["shodan"]
+            ))
+            
+    # Hunter.io (Employee Emails)
+    if hunter_data:
+        for email_obj in hunter_data.emails[:5]:
+             attack_surface.append(AttackSurfaceItem(
+                item_type="employee_email",
+                name=email_obj.get('value', 'Email'),
+                risk_level=RiskLevel.LOW,
+                description=f"Corporate email found: {email_obj.get('position', 'Employee')}",
+                source_modules=["hunter"]
             ))
     
     # Sort by risk level
@@ -277,7 +347,15 @@ def correlate_intelligence(
     tech_stack: Optional[TechnologyStack] = None,
     github_intel: Optional[GitHubIntelligence] = None,
     email_intel: Optional[EmailIntelligence] = None,
-    username_intel: Optional[UsernameIntelligence] = None
+    username_intel: Optional[UsernameIntelligence] = None,
+    shodan_data: Optional[ShodanData] = None,
+    virustotal_data: Optional[VirusTotalData] = None,
+    hunter_data: Optional[HunterData] = None,
+    securitytrails_data: Optional[SecurityTrailsData] = None,
+    urlscan_data: Optional[URLScanData] = None,
+    greynoise_data: Optional[GreyNoiseData] = None,
+    safebrowsing_data: Optional[SafeBrowsingData] = None,
+    abstract_data: Optional[AbstractData] = None
 ) -> CorrelatedIntelligence:
     """
     Main function to correlate all intelligence
@@ -285,12 +363,16 @@ def correlate_intelligence(
     
     # Calculate risk
     risk_score, risk_level = calculate_risk_score(
-        domain_intel, tech_stack, github_intel, email_intel, username_intel
+        domain_intel, tech_stack, github_intel, email_intel, username_intel,
+        shodan_data, virustotal_data, hunter_data, securitytrails_data,
+        urlscan_data, greynoise_data, safebrowsing_data
     )
     
     # Build attack surface
-    attack_surface = build_attack_surface(domain_intel, tech_stack, github_intel)
-    
+    attack_surface = build_attack_surface(
+        domain_intel, tech_stack, github_intel,
+        shodan_data, virustotal_data, hunter_data
+    )    
     # Generate findings
     key_findings = generate_key_findings(
         domain_intel, tech_stack, github_intel, email_intel, username_intel

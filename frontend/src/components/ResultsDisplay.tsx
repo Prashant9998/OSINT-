@@ -287,14 +287,14 @@ export default function ResultsDisplay({ results, onNewScan }: ResultsDisplayPro
                             <div className="space-y-2 max-h-64 overflow-y-auto">
                                 {results.github_intel.findings.map((finding: any, idx: number) => (
                                     <div key={idx} className={`p-3 rounded-lg border ${finding.risk_level === 'high' || finding.risk_level === 'critical'
-                                            ? 'border-cyber-red bg-cyber-red bg-opacity-10'
-                                            : 'border-gray-700 bg-black bg-opacity-40'
+                                        ? 'border-cyber-red bg-cyber-red bg-opacity-10'
+                                        : 'border-gray-700 bg-black bg-opacity-40'
                                         }`}>
                                         <div className="flex items-start justify-between mb-1">
                                             <span className="text-sm font-semibold text-white">{finding.repository}</span>
                                             <span className={`text-xs px-2 py-1 rounded ${finding.risk_level === 'high' || finding.risk_level === 'critical'
-                                                    ? 'bg-cyber-red text-white'
-                                                    : 'bg-gray-700 text-gray-300'
+                                                ? 'bg-cyber-red text-white'
+                                                : 'bg-gray-700 text-gray-300'
                                                 }`}>
                                                 {finding.risk_level.toUpperCase()}
                                             </span>
@@ -313,6 +313,107 @@ export default function ResultsDisplay({ results, onNewScan }: ResultsDisplayPro
                             </div>
                         </div>
                     )}
+                </motion.div>
+            )}
+
+            {/* Shodan Intelligence */}
+            {results.shodan_data && (
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.45 }}
+                    className="p-6 bg-cyber-dark border border-red-500 border-opacity-50 rounded-lg"
+                >
+                    <h3 className="text-xl font-bold text-red-500 mb-4 flex items-center">
+                        <FaServer className="mr-3" />
+                        SHODAN INFRASTRUCTURE
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-black bg-opacity-40 rounded-lg">
+                            <p className="text-gray-400 text-sm">IP Address</p>
+                            <p className="text-xl font-bold text-white">{results.shodan_data.ip}</p>
+                            <p className="text-xs text-gray-500">{results.shodan_data.isp} - {results.shodan_data.country_name}</p>
+                        </div>
+                        <div className="p-4 bg-black bg-opacity-40 rounded-lg">
+                            <p className="text-gray-400 text-sm">Open Ports</p>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                                {results.shodan_data.ports.map((port: number, idx: number) => (
+                                    <span key={idx} className="px-2 py-1 bg-red-900 bg-opacity-40 text-red-300 rounded text-xs border border-red-800">
+                                        {port}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    {results.shodan_data.vulnerabilities && results.shodan_data.vulnerabilities.length > 0 && (
+                        <div className="mt-4">
+                            <h4 className="text-red-400 font-semibold mb-2">Vulnerabilities</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {results.shodan_data.vulnerabilities.map((vuln: string, idx: number) => (
+                                    <span key={idx} className="px-2 py-1 bg-red-600 text-white rounded text-xs font-bold">
+                                        {vuln}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </motion.div>
+            )}
+
+            {/* VirusTotal Intelligence */}
+            {results.virustotal_data && (
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="p-6 bg-cyber-dark border border-blue-500 border-opacity-50 rounded-lg"
+                >
+                    <h3 className="text-xl font-bold text-blue-500 mb-4 flex items-center">
+                        <FaShieldAlt className="mr-3" />
+                        VIRUSTOTAL ANALYSIS
+                    </h3>
+                    <div className="flex items-center space-x-6">
+                        <div className="text-center">
+                            <p className="text-4xl font-bold text-red-500">{results.virustotal_data.malicious_count}</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider">Malicious</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-4xl font-bold text-green-500">{results.virustotal_data.harmless_count}</p>
+                            <p className="text-xs text-gray-400 uppercase tracking-wider">Harmless</p>
+                        </div>
+                        <div className="text-center">
+                            <p className="text-4xl font-bold text-gray-400">{results.virustotal_data.total_engines}</p>
+                            <p className="text-xs text-gray-500 uppercase tracking-wider">Total Engines</p>
+                        </div>
+                    </div>
+                </motion.div>
+            )}
+
+            {/* Hunter.io Intelligence */}
+            {results.hunter_data && (
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.55 }}
+                    className="p-6 bg-cyber-dark border border-orange-500 border-opacity-50 rounded-lg"
+                >
+                    <h3 className="text-xl font-bold text-orange-500 mb-4 flex items-center">
+                        <FaEnvelope className="mr-3" />
+                        HUNTER.IO EMAILS
+                    </h3>
+                    <div className="grid grid-cols-1 gap-2">
+                        {results.hunter_data.emails.map((email: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-black bg-opacity-40 rounded flex justify-between items-center">
+                                <div>
+                                    <p className="text-white font-mono text-sm">{email.value}</p>
+                                    <p className="text-xs text-gray-500">{email.position || 'Unknown Position'}</p>
+                                </div>
+                                <span className={`text-xs px-2 py-1 rounded ${email.type === 'personal' ? 'bg-blue-900 text-blue-200' : 'bg-gray-700 text-gray-300'}`}>
+                                    {email.type}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
                 </motion.div>
             )}
 

@@ -194,6 +194,90 @@ class UsernameIntelligence(BaseModel):
     insights: List[str] = []
 
 
+# Advanced OSINT Models
+
+class ShodanData(BaseModel):
+    """Shodan Host Information"""
+    ip: str
+    ports: List[int] = []
+    hostnames: List[str] = []
+    tags: List[str] = []
+    vulnerabilities: List[str] = []
+    os: Optional[str] = None
+    isp: Optional[str] = None
+    city: Optional[str] = None
+    country_name: Optional[str] = None
+    last_update: Optional[str] = None
+
+
+class VirusTotalData(BaseModel):
+    """VirusTotal Analysis"""
+    target: str
+    reputation: int = 0
+    malicious_count: int = 0
+    suspicious_count: int = 0
+    harmless_count: int = 0
+    total_engines: int = 0
+    permalink: Optional[str] = None
+    categories: List[str] = []
+    last_analysis_date: Optional[int] = None
+
+
+class HunterData(BaseModel):
+    """Hunter.io Domain Search"""
+    domain: str
+    organization: Optional[str] = None
+    country: Optional[str] = None
+    state: Optional[str] = None
+    emails: List[Dict[str, Any]] = []  # List of email objects
+    pattern: Optional[str] = None
+    score: int = 0
+
+
+class SecurityTrailsData(BaseModel):
+    """SecurityTrails DNS History"""
+    domain: str
+    subdomains: List[str] = []
+    subdomain_count: int = 0
+    history_records: int = 0
+
+
+class URLScanData(BaseModel):
+    """URLScan.io Analysis"""
+    url: str
+    result_url: Optional[str] = None
+    screenshot_url: Optional[str] = None
+    malicious: bool = False
+    score: int = 0
+
+
+class GreyNoiseData(BaseModel):
+    """GreyNoise IP Context"""
+    ip: str
+    noise: bool = False
+    riot: bool = False
+    classification: Optional[str] = None
+    name: Optional[str] = None
+    link: Optional[str] = None
+    last_seen: Optional[str] = None
+
+
+class AbstractData(BaseModel):
+    """Abstract API Enrichment"""
+    target: str
+    geolocation: Optional[Dict[str, Any]] = None
+    phone_validation: Optional[Dict[str, Any]] = None
+    email_validation: Optional[Dict[str, Any]] = None
+    company_enrichment: Optional[Dict[str, Any]] = None
+
+
+class SafeBrowsingData(BaseModel):
+    """Google Safe Browsing"""
+    url: str
+    matches: List[Dict[str, Any]] = []
+    is_safe: bool = True
+
+
 # Correlation and Risk Models
 class AttackSurfaceItem(BaseModel):
     """Single attack surface component"""
@@ -239,6 +323,16 @@ class ScanResult(BaseModel):
     github_intel: Optional[GitHubIntelligence] = None
     email_intel: Optional[EmailIntelligence] = None
     username_intel: Optional[UsernameIntelligence] = None
+    
+    # Advanced OSINT Results
+    shodan_data: Optional[ShodanData] = None
+    virustotal_data: Optional[VirusTotalData] = None
+    hunter_data: Optional[HunterData] = None
+    securitytrails_data: Optional[SecurityTrailsData] = None
+    urlscan_data: Optional[URLScanData] = None
+    greynoise_data: Optional[GreyNoiseData] = None
+    abstract_data: Optional[AbstractData] = None
+    safebrowsing_data: Optional[SafeBrowsingData] = None
     
     # Correlation
     correlated_intel: Optional[CorrelatedIntelligence] = None
