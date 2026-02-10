@@ -5,7 +5,10 @@ import { motion } from 'framer-motion'
 import { FaSpinner, FaCheck, FaSearch, FaShieldAlt, FaGithub, FaEnvelope, FaUser } from 'react-icons/fa'
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+if (API_URL && !API_URL.startsWith('http')) {
+    API_URL = `https://${API_URL}`
+}
 const API_KEY = 'osint-recon-key-2026'
 
 interface ScanProgressProps {
@@ -116,28 +119,28 @@ export default function ScanProgress({ scanId, onComplete, onError }: ScanProgre
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: idx * 0.1 }}
                                 className={`p-4 rounded-lg border transition-all duration-300 ${isCompleted
-                                        ? 'border-cyber-green bg-cyber-green bg-opacity-10'
-                                        : isActive
-                                            ? 'border-cyber-cyan bg-cyber-cyan bg-opacity-10 animate-pulse'
-                                            : 'border-gray-700 bg-black bg-opacity-40'
+                                    ? 'border-cyber-green bg-cyber-green bg-opacity-10'
+                                    : isActive
+                                        ? 'border-cyber-cyan bg-cyber-cyan bg-opacity-10 animate-pulse'
+                                        : 'border-gray-700 bg-black bg-opacity-40'
                                     }`}
                             >
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center space-x-3">
                                         <module.icon
                                             className={`text-2xl ${isCompleted
-                                                    ? 'text-cyber-green'
-                                                    : isActive
-                                                        ? 'text-cyber-cyan'
-                                                        : 'text-gray-600'
+                                                ? 'text-cyber-green'
+                                                : isActive
+                                                    ? 'text-cyber-cyan'
+                                                    : 'text-gray-600'
                                                 }`}
                                         />
                                         <span
                                             className={`font-semibold ${isCompleted
-                                                    ? 'text-cyber-green'
-                                                    : isActive
-                                                        ? 'text-cyber-cyan'
-                                                        : 'text-gray-500'
+                                                ? 'text-cyber-green'
+                                                : isActive
+                                                    ? 'text-cyber-cyan'
+                                                    : 'text-gray-500'
                                                 }`}
                                         >
                                             {module.name}

@@ -35,7 +35,7 @@ services:
       - key: NEXT_PUBLIC_API_URL
         fromService:
           name: osint-backend
-          property: url
+          property: host
       - key: NODE_ENV
         value: production
     autoDeploy: true

@@ -5,7 +5,10 @@ import { motion } from 'framer-motion'
 import { FaSearch, FaEnvelope, FaUser, FaGlobe } from 'react-icons/fa'
 import axios from 'axios'
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+if (API_URL && !API_URL.startsWith('http')) {
+    API_URL = `https://${API_URL}`
+}
 const API_KEY = 'osint-recon-key-2026'
 
 interface ScanFormProps {
@@ -91,8 +94,8 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
                                     type="button"
                                     onClick={() => setScanType(type.value as any)}
                                     className={`p-4 rounded-lg border-2 transition-all duration-300 text-left ${scanType === type.value
-                                            ? 'border-cyber-cyan bg-cyber-cyan bg-opacity-20 neon-border'
-                                            : 'border-gray-600 hover:border-cyber-cyan hover:border-opacity-50'
+                                        ? 'border-cyber-cyan bg-cyber-cyan bg-opacity-20 neon-border'
+                                        : 'border-gray-600 hover:border-cyber-cyan hover:border-opacity-50'
                                         }`}
                                 >
                                     <type.icon className={`text-2xl mb-2 ${scanType === type.value ? 'text-cyber-cyan' : 'text-gray-400'}`} />
@@ -156,8 +159,8 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
                         whileHover={{ scale: loading ? 1 : 1.02 }}
                         whileTap={{ scale: loading ? 1 : 0.98 }}
                         className={`w-full py-4 rounded-lg font-bold text-lg transition-all duration-300 ${loading
-                                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                                : 'bg-cyber-cyan text-cyber-dark hover:bg-opacity-90 neon-border'
+                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                            : 'bg-cyber-cyan text-cyber-dark hover:bg-opacity-90 neon-border'
                             }`}
                     >
                         {loading ? (
