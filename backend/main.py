@@ -5,8 +5,7 @@ OSINT Reconnaissance Platform API
 
 from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -59,7 +58,6 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # CORS Configuration
-# Parse ALLOWED_ORIGINS (can be "*" or comma-separated list)
 allowed_origins = settings.ALLOWED_ORIGINS
 if isinstance(allowed_origins, str):
     if allowed_origins == "*":
@@ -78,69 +76,51 @@ app.add_middleware(
 # In-memory storage for scan results (in production, use Redis or database)
 scan_results_cache = {}
 
-# Absolute path to the directory containing this file
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Try multiple possible static folder locations to handle different environments
-STATIC_LOCATIONS = [
-    os.path.join(BASE_DIR, "static"),      # Standard Docker path
-    os.path.join(os.getcwd(), "static"),   # Local/current working directory
-    "static"                               # Relative fallback
-]
-
-STATIC_DIR = None
-for loc in STATIC_LOCATIONS:
-    if os.path.exists(loc) and os.path.isdir(loc):
-        STATIC_DIR = loc
-        break
-
-# Mount API routes and documentation first
-# (FastAPI searches routes in order of definition)
-
-@app.get("/debug/paths")
-async def debug_paths():
-    """Diagnostic endpoint to troubleshoot frontend path issues"""
-    return {
-        "cwd": os.getcwd(),
-        "base_dir": BASE_DIR,
-        "static_dir_target": STATIC_DIR,
-        "static_dir_exists": os.path.exists(STATIC_DIR) if STATIC_DIR else False,
-        "static_locations_checked": STATIC_LOCATIONS,
-        "contents_of_cwd": os.listdir(os.getcwd()),
-        "contents_of_base": os.listdir(BASE_DIR) if os.path.exists(BASE_DIR) else "not_found"
-    }
+# ============================================================
+# API Routes
+# ============================================================
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and resources on startup"""
     await init_db()
-    print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started")
-    print(f"[DEBUG] Base Directory: {BASE_DIR}")
-    print(f"[DEBUG] Discovered Static Directory: {STATIC_DIR}")
-    if STATIC_DIR:
-        print(f"[OK] Serving frontend from: {STATIC_DIR}")
-    else:
-        print("[WARNING] Frontend static folder NOT found in any known locations!")
+    print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started successfully")
+    print(f"[API] Available at: {settings.API_PREFIX}")
 
-# Mount static assets if they exist
-if STATIC_DIR:
-    # Mount the _next directory specifically for Next.js assets
-    next_dir = os.path.join(STATIC_DIR, "_next")
-    if os.path.exists(next_dir):
-        app.mount("/_next", StaticFiles(directory=next_dir), name="next-assets")
-    
-# After all API routes, mount the static frontend as a catch-all
-if STATIC_DIR:
-    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="frontend")
-else:
-    @app.get("/")
-    async def root_fallback():
-        return {
-            "message": "OSINT Platform API",
-            "frontend": "not_loaded",
-            "status": "operational",
-            "debug_url": "/debug/paths"
-        }
+
+@app.get("/")
+async def root():
+    """Root endpoint with API information"""
+    return {
+        "message": "OSINT Reconnaissance Platform API",
+        "version": settings.APP_VERSION,
+        "status": "operational",
+        "docs": "/api/docs",
+        "endpoints": {
+            "health": "/health",
+            "scan": f"{settings.API_PREFIX}/scan",
+            "status": f"{settings.API_PREFIX}/scan/{{scan_id}}"
+        },
+        "ethical_notice": "This platform performs ONLY passive OSINT reconnaissance using public data."
+    }
+
+
+@app.get("/health", response_model=HealthCheckResponse)
+async def health_check():
+    """Health check endpoint"""
+    return HealthCheckResponse(
+        status="healthy",
+        version=settings.APP_VERSION,
+        timestamp=datetime.utcnow(),
+        modules_available=[
+            "domain_intel",
+            "tech_fingerprint",
+            "github_intel",
+            "email_intel",
+            "username_intel"
+        ]
+    )
 
 
 @app.post(f"{settings.API_PREFIX}/scan")
@@ -301,11 +281,7 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
             result.hunter_data = await gather_hunter_domain_search(scan_request.target)
             if result.hunter_data: modules_executed.append("hunter")
             
-            # 6. Abstract API (Company Enrichment - if meaningful for domain)
-            # Skipping for generic domain scan to save credits/time, usually better for specific entities
-            
-            # 7. Shodan & GreyNoise (Require IP)
-            # We need to resolve IP first. domain_intel does this.
+            # 6. Shodan & GreyNoise (Require IP)
             if result.domain_intel and result.domain_intel.ip_addresses:
                 primary_ip = result.domain_intel.ip_addresses[0]
                 
@@ -321,7 +297,7 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
                 result.abstract_data = await gather_abstract_intelligence(primary_ip, "ip")
                 if result.abstract_data: modules_executed.append("abstract")
 
-            # 8. Google Dorking
+            # 7. Google Dorking
             result.google_dorking_data = await gather_google_dorking(scan_request.target, deep_scan=scan_request.deep_scan)
             if result.google_dorking_data: modules_executed.append("google_dorking")
         
@@ -333,7 +309,6 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
             github_intel=result.github_intel,
             email_intel=result.email_intel,
             username_intel=result.username_intel,
-            # Pass new data to correlator (needs update in correlator signature)
             shodan_data=result.shodan_data,
             virustotal_data=result.virustotal_data,
             hunter_data=result.hunter_data,

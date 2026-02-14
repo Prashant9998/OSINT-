@@ -1,12 +1,15 @@
 services:
-  # Consolidated Platform Service (Docker)
+  # Backend API (FastAPI/Python)
   - type: web
-    name: osint-platform
-    env: docker
-    dockerContext: .
-    dockerfilePath: Dockerfile
+    name: osint-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     plan: free
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
       - key: DATABASE_URL
         fromDatabase:
           name: osint-db
@@ -15,7 +18,9 @@ services:
         generateValue: true
       - key: API_KEY
         value: osint-recon-key-2026
-      # OSINT API Keys (Add your keys in Render Dashboard)
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      # OSINT API Keys
       - key: SHODAN_API_KEY
         value: placeholder_key
       - key: VIRUSTOTAL_API_KEY
@@ -38,6 +43,21 @@ services:
         value: placeholder_key
       - key: GOOGLE_SEARCH_CX
         value: placeholder_key
+    autoDeploy: true
+
+  # Frontend Dashboard (Next.js/Node)
+  - type: web
+    name: osint-frontend
+    env: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npx serve out -l $PORT
+    plan: free
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://osint-backend.onrender.com
+      - key: NODE_ENV
+        value: production
     autoDeploy: true
 
 databases:
