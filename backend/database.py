@@ -61,10 +61,16 @@ class AbuseLog(Base):
 
 
 # Database Engine
-# Check for Railway/Heroku postgres:// URL and convert to postgresql+asyncpg://
+# Convert any PostgreSQL URL to use the async driver (asyncpg)
 database_url = settings.DATABASE_URL
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
+if database_url:
+    # Handle all possible PostgreSQL URL formats from hosting providers
+    if database_url.startswith("postgresql+psycopg2://"):
+        database_url = database_url.replace("postgresql+psycopg2://", "postgresql+asyncpg://", 1)
+    elif database_url.startswith("postgresql://"):
+        database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql+asyncpg://", 1)
 
 engine = create_async_engine(
     database_url,
