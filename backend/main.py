@@ -88,10 +88,8 @@ if os.path.exists("static"):
     # Mount the rest of the static folder
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Catch-all route for SPA (must be after all API routes)
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    # Check if a static file exists
+
+# Root route: Serve frontend index or API info
 @app.get("/")
 async def root():
     """Serve the frontend if built, otherwise return API info"""
