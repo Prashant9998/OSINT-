@@ -17,6 +17,9 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     gcc \
     python3-dev \
+    libxml2-dev \
+    libxslt-dev \
+    whois \
     && rm -rf /var/lib/apt/lists/*
 
 # Install backend dependencies
@@ -29,8 +32,9 @@ COPY backend/ ./
 # Copy built frontend from Stage 1
 COPY --from=frontend-builder /app/frontend/out ./static
 
-# Expose port
+# Expose port (Render ignores this but good practice)
 EXPOSE 8000
 
-# Start command
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Start command using the $PORT environment variable provided by Render
+# We use sh -c to ensure the environment variable is expanded
+CMD sh -c "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
