@@ -78,22 +78,24 @@ app.add_middleware(
 # In-memory storage for scan results (in production, use Redis or database)
 scan_results_cache = {}
 
+# Absolute path to the directory containing this file
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
 # Mount static files (built from frontend)
-if os.path.exists("static"):
+if os.path.exists(STATIC_DIR):
     # Mount the _next directory for static assets
-    next_dir = os.path.join("static", "_next")
+    next_dir = os.path.join(STATIC_DIR, "_next")
     if os.path.exists(next_dir):
         app.mount("/_next", StaticFiles(directory=next_dir), name="next-assets")
     
     # Mount the rest of the static folder
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-
-# Root route: Serve frontend index or API info
 @app.get("/")
 async def root():
     """Serve the frontend if built, otherwise return API info"""
-    index_file = os.path.join("static", "index.html")
+    index_file = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
         
@@ -101,33 +103,37 @@ async def root():
         "message": "OSINT Reconnaissance Platform API",
         "version": settings.APP_VERSION,
         "status": "operational",
+        "frontend_status": "not_found",
+        "debug_info": f"Checked path: {index_file}",
         "docs": "/api/docs",
         "endpoints": {
             "health": "/health",
             "scan": f"{settings.API_PREFIX}/scan",
             "status": f"{settings.API_PREFIX}/scan/{{scan_id}}"
-        },
-        "ethical_notice": "This platform performs ONLY passive OSINT reconnaissance using public data. Always obtain permission before scanning targets."
+        }
     }
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and resources on startup"""
     await init_db()
-    print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started successfully")
-    print(f"[API] Available at: {settings.API_PREFIX}")
-
+    print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started")
+    print(f"[DEBUG] Static directory: {STATIC_DIR}")
+    if os.path.exists(STATIC_DIR):
+        print(f"[DEBUG] Static files found: {os.listdir(STATIC_DIR)}")
+    else:
+        print("[WARNING] Static directory NOT found!")
 
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     """Catch-all route to serve the SPA for any other path"""
-    # Check if the file exists directly in static (e.g., /favicon.ico)
-    static_file = os.path.join("static", full_path)
+    # Check if the file exists directly in static
+    static_file = os.path.join(STATIC_DIR, full_path)
     if os.path.isfile(static_file):
         return FileResponse(static_file)
     
     # Fallback to index.html for SPA routing
-    index_file = os.path.join("static", "index.html")
+    index_file = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
     

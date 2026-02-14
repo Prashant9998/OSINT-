@@ -25,12 +25,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy backend code
 COPY backend/ ./
 
-# Copy built frontend from Stage 1
+# Copy built frontend from Stage 1 into a 'static' folder inside the backend directory
 COPY --from=frontend-builder /app/frontend/out ./static
 
-# Expose port (Render ignores this but good practice)
+# Verify the static build exists
+RUN if [ ! -f ./static/index.html ]; then echo "Frontend build failed: index.html not found"; exit 1; fi
+RUN ls -la ./static
+
+# Expose port
 EXPOSE 8000
 
-# Start command using the $PORT environment variable provided by Render
-# We use sh -c to ensure the environment variable is expanded
+# Start command using the $PORT environment variable
 CMD sh -c "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
