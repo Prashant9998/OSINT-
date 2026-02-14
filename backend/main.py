@@ -80,50 +80,57 @@ scan_results_cache = {}
 
 # Absolute path to the directory containing this file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+# Try multiple possible static folder locations to handle different environments
+STATIC_LOCATIONS = [
+    os.path.join(BASE_DIR, "static"),      # Standard Docker path
+    os.path.join(os.getcwd(), "static"),   # Local/current working directory
+    "static"                               # Relative fallback
+]
+
+STATIC_DIR = None
+for loc in STATIC_LOCATIONS:
+    if os.path.exists(loc) and os.path.isdir(loc):
+        STATIC_DIR = loc
+        break
 
 # Mount API routes and documentation first
 # (FastAPI searches routes in order of definition)
 
-@app.get("/health", response_model=HealthCheckResponse)
-async def health_check():
-    """Health check endpoint"""
-    return HealthCheckResponse(
-        status="healthy",
-        version=settings.APP_VERSION,
-        timestamp=datetime.utcnow(),
-        modules_available=[
-            "domain_intel",
-            "tech_fingerprint",
-            "github_intel",
-            "email_intel",
-            "username_intel"
-        ]
-    )
+@app.get("/debug/paths")
+async def debug_paths():
+    """Diagnostic endpoint to troubleshoot frontend path issues"""
+    return {
+        "cwd": os.getcwd(),
+        "base_dir": BASE_DIR,
+        "static_dir_target": STATIC_DIR,
+        "static_dir_exists": os.path.exists(STATIC_DIR) if STATIC_DIR else False,
+        "static_locations_checked": STATIC_LOCATIONS,
+        "contents_of_cwd": os.listdir(os.getcwd()),
+        "contents_of_base": os.listdir(BASE_DIR) if os.path.exists(BASE_DIR) else "not_found"
+    }
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and resources on startup"""
     await init_db()
     print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started")
-    if os.path.exists(STATIC_DIR):
+    print(f"[DEBUG] Base Directory: {BASE_DIR}")
+    print(f"[DEBUG] Discovered Static Directory: {STATIC_DIR}")
+    if STATIC_DIR:
         print(f"[OK] Serving frontend from: {STATIC_DIR}")
     else:
-        print("[WARNING] Frontend static folder not found!")
+        print("[WARNING] Frontend static folder NOT found in any known locations!")
 
-# Mount static assets if they exist (standard mounting)
-if os.path.exists(STATIC_DIR):
+# Mount static assets if they exist
+if STATIC_DIR:
     # Mount the _next directory specifically for Next.js assets
     next_dir = os.path.join(STATIC_DIR, "_next")
     if os.path.exists(next_dir):
         app.mount("/_next", StaticFiles(directory=next_dir), name="next-assets")
     
-    # Mount the main static folder
-    # We use a catch-all mount at the END for the frontend
-
 # After all API routes, mount the static frontend as a catch-all
-if os.path.exists(STATIC_DIR):
-    # Using html=True makes it serve index.html for the root automatically
+if STATIC_DIR:
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="frontend")
 else:
     @app.get("/")
@@ -131,7 +138,8 @@ else:
         return {
             "message": "OSINT Platform API",
             "frontend": "not_loaded",
-            "docs": "/api/docs"
+            "status": "operational",
+            "debug_url": "/debug/paths"
         }
 
 
