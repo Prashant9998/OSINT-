@@ -10,15 +10,11 @@ ENV NEXT_PUBLIC_API_URL=""
 RUN npm run build
 
 # Stage 2: Backend & Runner
-FROM python:3.11-slim
+FROM python:3.11
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (full image already has many, but adding specific OSINT ones)
 RUN apt-get update && apt-get install -y \
-    gcc \
-    python3-dev \
-    libxml2-dev \
-    libxslt-dev \
     whois \
     && rm -rf /var/lib/apt/lists/*
 

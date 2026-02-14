@@ -7,7 +7,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Float, Boolean, Text, 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime, timedelta
+import asyncio
 from typing import Optional, List
 from config import settings
 
@@ -79,10 +79,23 @@ AsyncSessionLocal = async_sessionmaker(
 
 
 # Database Functions
-async def init_db():
-    """Initialize database tables"""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+async def init_db(retries: int = 5, delay: int = 5):
+    """Initialize database tables with retry logic"""
+    for i in range(retries):
+        try:
+            print(f"[DB] Initializing database (Attempt {i+1}/{retries})...")
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
+            print("[OK] Database initialized successfully")
+            return
+        except Exception as e:
+            print(f"[ERROR] Database initialization failed: {e}")
+            if i < retries - 1:
+                print(f"[INFO] Retrying in {delay} seconds...")
+                await asyncio.sleep(delay)
+            else:
+                print("[CRITICAL] Max retries reached. Database initialization failed.")
+                raise e
 
 
 async def get_db() -> AsyncSession:
