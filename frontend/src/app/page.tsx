@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { FaShieldAlt, FaSearch, FaGithub, FaEnvelope, FaUser, FaExclamationTriangle } from 'react-icons/fa'
-import ScanForm from '@/components/ScanForm'
-import ScanProgress from '@/components/ScanProgress'
-import ResultsDisplay from '@/components/ResultsDisplay'
+import ScanForm from '../components/ScanForm'
+import ScanProgress from '../components/ScanProgress'
+import ResultsDisplay from '../components/ResultsDisplay'
 
 export default function Home() {
     const [scanId, setScanId] = useState<string | null>(null)
