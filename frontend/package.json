@@ -2,10 +2,13 @@
     "name": "osint-platform-frontend",
     "version": "1.0.0",
     "private": true,
+    "engines": {
+        "node": ">=18.0.0 <20.0.0"
+    },
     "scripts": {
         "dev": "next dev",
         "build": "next build",
-        "start": "next start",
+        "start": "npx serve out -l $PORT",
         "lint": "next lint"
     },
     "dependencies": {
@@ -15,7 +18,8 @@
         "axios": "^1.6.5",
         "recharts": "^2.10.3",
         "react-icons": "^5.0.1",
-        "framer-motion": "^11.0.3"
+        "framer-motion": "^11.0.3",
+        "serve": "^14.2.0"
     },
     "devDependencies": {
         "@types/node": "^20",
