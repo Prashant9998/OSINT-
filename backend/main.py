@@ -80,35 +80,25 @@ scan_results_cache = {}
 
 # Mount static files (built from frontend)
 if os.path.exists("static"):
+    # Mount the _next directory for static assets
+    next_dir = os.path.join("static", "_next")
+    if os.path.exists(next_dir):
+        app.mount("/_next", StaticFiles(directory=next_dir), name="next-assets")
+    
+    # Mount the rest of the static folder
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Catch-all route for SPA (must be after all API routes)
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
     # Check if a static file exists
-    static_file = os.path.join("static", full_path)
-    if os.path.isfile(static_file):
-        return FileResponse(static_file)
-    
-    # Otherwise serve index.html for client-side routing
+@app.get("/")
+async def root():
+    """Serve the frontend if built, otherwise return API info"""
     index_file = os.path.join("static", "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
-    
-    # If no frontend built yet, return root API response
-    return await root()
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and resources on startup"""
-    await init_db()
-    print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started successfully")
-    print(f"[API] Available at: {settings.API_PREFIX}")
-
-
-@app.get("/")
-async def root():
-    """Root endpoint with API information"""
+        
     return {
         "message": "OSINT Reconnaissance Platform API",
         "version": settings.APP_VERSION,
@@ -121,6 +111,29 @@ async def root():
         },
         "ethical_notice": "This platform performs ONLY passive OSINT reconnaissance using public data. Always obtain permission before scanning targets."
     }
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database and resources on startup"""
+    await init_db()
+    print(f"[OK] {settings.APP_NAME} v{settings.APP_VERSION} started successfully")
+    print(f"[API] Available at: {settings.API_PREFIX}")
+
+
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Catch-all route to serve the SPA for any other path"""
+    # Check if the file exists directly in static (e.g., /favicon.ico)
+    static_file = os.path.join("static", full_path)
+    if os.path.isfile(static_file):
+        return FileResponse(static_file)
+    
+    # Fallback to index.html for SPA routing
+    index_file = os.path.join("static", "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    
+    raise HTTPException(status_code=404, detail="Not Found")
 
 
 @app.get("/health", response_model=HealthCheckResponse)
