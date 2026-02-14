@@ -6,6 +6,7 @@ OSINT Reconnaissance Platform API
 from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -77,6 +78,25 @@ app.add_middleware(
 # In-memory storage for scan results (in production, use Redis or database)
 scan_results_cache = {}
 
+# Mount static files (built from frontend)
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Catch-all route for SPA (must be after all API routes)
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    # Check if a static file exists
+    static_file = os.path.join("static", full_path)
+    if os.path.isfile(static_file):
+        return FileResponse(static_file)
+    
+    # Otherwise serve index.html for client-side routing
+    index_file = os.path.join("static", "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    
+    # If no frontend built yet, return root API response
+    return await root()
 
 @app.on_event("startup")
 async def startup_event():

@@ -1,14 +1,12 @@
 services:
-  # Backend Service (FastAPI)
+  # Consolidated Platform Service (Docker)
   - type: web
-    name: osint-backend
-    env: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    name: osint-platform
+    env: docker
+    dockerContext: .
+    dockerfilePath: Dockerfile
+    plan: free
     envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
       - key: DATABASE_URL
         fromDatabase:
           name: osint-db
@@ -16,7 +14,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: API_KEY
-        value: osint-recon-key-2026 # Matches frontend default
+        value: osint-recon-key-2026
       # OSINT API Keys (Add your keys in Render Dashboard)
       - key: SHODAN_API_KEY
         value: placeholder_key
@@ -42,25 +40,8 @@ services:
         value: placeholder_key
     autoDeploy: true
 
-  # Frontend Service (Next.js)
-  - type: web
-    name: osint-frontend
-    env: node
-    rootDir: frontend
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: osint-backend
-          property: host
-      - key: NODE_ENV
-        value: production
-    autoDeploy: true
-
 databases:
   - name: osint-db
     databaseName: osint
     user: osint_user
-    plan: free # Render Free Tier PostgreSQL
+    plan: free
