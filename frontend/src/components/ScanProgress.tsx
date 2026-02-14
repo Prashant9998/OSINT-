@@ -5,10 +5,12 @@ import { motion } from 'framer-motion'
 import { FaSpinner, FaCheck, FaSearch, FaShieldAlt, FaGithub, FaEnvelope, FaUser } from 'react-icons/fa'
 import axios from 'axios'
 
-let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+let API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://osint-backend.onrender.com'
 if (API_URL && !API_URL.startsWith('http')) {
     API_URL = `https://${API_URL}`
 }
+// Strip trailing slash
+API_URL = API_URL.replace(/\/$/, '')
 const API_KEY = 'osint-recon-key-2026'
 
 interface ScanProgressProps {

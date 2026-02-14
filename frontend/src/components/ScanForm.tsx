@@ -9,6 +9,8 @@ let API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 if (API_URL && !API_URL.startsWith('http')) {
     API_URL = `https://${API_URL}`
 }
+// Strip trailing slash
+API_URL = API_URL.replace(/\/$/, '')
 const API_KEY = 'osint-recon-key-2026'
 
 interface ScanFormProps {

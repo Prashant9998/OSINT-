@@ -55,7 +55,9 @@ services:
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        value: https://osint-backend.onrender.com
+        fromService:
+          name: osint-backend
+          property: url
       - key: NODE_VERSION
         value: 18.20.4
       - key: NODE_ENV
