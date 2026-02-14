@@ -38,6 +38,7 @@ from osint_modules.urlscan_intel import gather_urlscan_intelligence
 from osint_modules.greynoise_intel import gather_greynoise_intelligence
 from osint_modules.abstract_intel import gather_abstract_intelligence
 from osint_modules.safebrowsing_intel import check_safe_browsing
+from osint_modules.dorking_intel import gather_google_dorking
 
 # Intelligence
 from intelligence.correlator import correlate_intelligence
@@ -296,6 +297,10 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
                 # Abstract IP Geolocation
                 result.abstract_data = await gather_abstract_intelligence(primary_ip, "ip")
                 if result.abstract_data: modules_executed.append("abstract")
+
+            # 8. Google Dorking
+            result.google_dorking_data = await gather_google_dorking(scan_request.target, deep_scan=scan_request.deep_scan)
+            if result.google_dorking_data: modules_executed.append("google_dorking")
         
         # Correlate intelligence
         result.correlated_intel = correlate_intelligence(
@@ -312,7 +317,8 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
             securitytrails_data=result.securitytrails_data,
             urlscan_data=result.urlscan_data,
             greynoise_data=result.greynoise_data,
-            safebrowsing_data=result.safebrowsing_data
+            safebrowsing_data=result.safebrowsing_data,
+            google_dorking_data=result.google_dorking_data
         )
         
         # Update result

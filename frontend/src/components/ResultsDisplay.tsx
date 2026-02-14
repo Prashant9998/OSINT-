@@ -1,9 +1,11 @@
 'use client'
 
+import React from 'react'
+
 import { motion } from 'framer-motion'
 import {
     FaShieldAlt, FaExclamationTriangle, FaCheckCircle, FaGlobe,
-    FaServer, FaGithub, FaEnvelope, FaUser, FaDownload, FaRedo
+    FaServer, FaGithub, FaEnvelope, FaUser, FaDownload, FaRedo, FaSearch
 } from 'react-icons/fa'
 
 interface ResultsDisplayProps {
@@ -411,6 +413,42 @@ export default function ResultsDisplay({ results, onNewScan }: ResultsDisplayPro
                                 <span className={`text-xs px-2 py-1 rounded ${email.type === 'personal' ? 'bg-blue-900 text-blue-200' : 'bg-gray-700 text-gray-300'}`}>
                                     {email.type}
                                 </span>
+                            </div>
+                        ))}
+                    </div>
+                </motion.div>
+            )}
+
+            {/* Google Dorking Intelligence */}
+            {results.google_dorking_data && results.google_dorking_data.total_results > 0 && (
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                    className="p-6 bg-cyber-dark border border-cyber-green border-opacity-50 rounded-lg"
+                >
+                    <h3 className="text-xl font-bold text-cyber-green mb-4 flex items-center">
+                        <FaSearch className="mr-3" />
+                        GOOGLE DORKING FINDINGS
+                    </h3>
+                    <div className="space-y-4">
+                        {results.google_dorking_data.results.map((result: any, idx: number) => (
+                            <div key={idx} className="p-4 bg-black bg-opacity-40 rounded-lg border border-gray-700 hover:border-cyber-green transition-all">
+                                <h4 className="text-cyber-green font-semibold text-lg mb-1">{result.title}</h4>
+                                <p className="text-xs text-cyber-cyan mb-2 font-mono break-all">{result.link}</p>
+                                {result.snippet && (
+                                    <p className="text-sm text-gray-400 italic">"{result.snippet}"</p>
+                                )}
+                                <div className="mt-2 flex justify-end">
+                                    <a
+                                        href={result.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-cyber-green hover:underline flex items-center"
+                                    >
+                                        Inspect Source →
+                                    </a>
+                                </div>
                             </div>
                         ))}
                     </div>

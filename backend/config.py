@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     ABSTRACT_API_KEY: Optional[str] = None
     GREYNOISE_API_KEY: Optional[str] = None
     GOOGLE_SAFE_BROWSING_KEY: Optional[str] = None
+    GOOGLE_SEARCH_API_KEY: Optional[str] = None
+    GOOGLE_SEARCH_CX: Optional[str] = None
     
     # Security Settings
     SECRET_KEY: str = "your-secret-key-change-in-production"

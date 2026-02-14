@@ -278,6 +278,22 @@ class SafeBrowsingData(BaseModel):
     is_safe: bool = True
 
 
+class GoogleDork(BaseModel):
+    """Specific Google search result (dork)"""
+    title: str
+    link: str
+    snippet: Optional[str] = None
+    display_link: Optional[str] = None
+
+
+class GoogleDorkingData(BaseModel):
+    """Google Dorking OSINT Results"""
+    target: str
+    results: List[GoogleDork] = []
+    total_results: int = 0
+    dorks_applied: List[str] = []
+
+
 # Correlation and Risk Models
 class AttackSurfaceItem(BaseModel):
     """Single attack surface component"""
@@ -333,6 +349,7 @@ class ScanResult(BaseModel):
     greynoise_data: Optional[GreyNoiseData] = None
     abstract_data: Optional[AbstractData] = None
     safebrowsing_data: Optional[SafeBrowsingData] = None
+    google_dorking_data: Optional[GoogleDorkingData] = None
     
     # Correlation
     correlated_intel: Optional[CorrelatedIntelligence] = None

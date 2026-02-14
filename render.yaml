@@ -36,6 +36,10 @@ services:
         value: placeholder_key
       - key: GITHUB_TOKEN
         value: placeholder_key
+      - key: GOOGLE_SEARCH_API_KEY
+        value: placeholder_key
+      - key: GOOGLE_SEARCH_CX
+        value: placeholder_key
     autoDeploy: true
 
   # Frontend Service (Next.js)

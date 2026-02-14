@@ -9,7 +9,7 @@ from models import (
     EmailIntelligence, UsernameIntelligence,
     ShodanData, VirusTotalData, HunterData, SecurityTrailsData,
     URLScanData, GreyNoiseData, AbstractData, SafeBrowsingData,
-    CorrelatedIntelligence, AttackSurfaceItem, RiskLevel
+    GoogleDorkingData, CorrelatedIntelligence, AttackSurfaceItem, RiskLevel
 )
 
 
@@ -25,7 +25,8 @@ def calculate_risk_score(
     securitytrails_data: Optional[SecurityTrailsData] = None,
     urlscan_data: Optional[URLScanData] = None,
     greynoise_data: Optional[GreyNoiseData] = None,
-    safebrowsing_data: Optional[SafeBrowsingData] = None
+    safebrowsing_data: Optional[SafeBrowsingData] = None,
+    google_dorking_data: Optional[GoogleDorkingData] = None
 ) -> tuple[int, RiskLevel]:
     """
     Calculate overall risk score (0-100) and risk level
@@ -123,6 +124,10 @@ def calculate_risk_score(
     if hunter_data:
         risk_score += min(len(hunter_data.emails), 10)
     
+    # Google Dorking Risk (Exposed sensitive information)
+    if google_dorking_data and google_dorking_data.total_results > 0:
+        risk_score += min(google_dorking_data.total_results * 5, 20)
+    
     # Normalize to 0-100
     risk_score = min(risk_score, max_score)
     
@@ -145,7 +150,8 @@ def build_attack_surface(
     github_intel: Optional[GitHubIntelligence],
     shodan_data: Optional[ShodanData] = None,
     virustotal_data: Optional[VirusTotalData] = None,
-    hunter_data: Optional[HunterData] = None
+    hunter_data: Optional[HunterData] = None,
+    google_dorking_data: Optional[GoogleDorkingData] = None
 ) -> List[AttackSurfaceItem]:
     """
     Build comprehensive attack surface map
@@ -228,6 +234,17 @@ def build_attack_surface(
                 risk_level=RiskLevel.LOW,
                 description=f"Corporate email found: {email_obj.get('position', 'Employee')}",
                 source_modules=["hunter"]
+            ))
+    
+    # Google Dorking Results (Exposed Files/Sensitive Pages)
+    if google_dorking_data:
+        for result in google_dorking_data.results[:10]:
+            attack_surface.append(AttackSurfaceItem(
+                item_type="exposed_page",
+                name=result.title,
+                risk_level=RiskLevel.MEDIUM,
+                description=f"Potential sensitive page/file found via Google Dorking",
+                source_modules=["google_dorking"]
             ))
     
     # Sort by risk level
@@ -355,24 +372,24 @@ def correlate_intelligence(
     urlscan_data: Optional[URLScanData] = None,
     greynoise_data: Optional[GreyNoiseData] = None,
     safebrowsing_data: Optional[SafeBrowsingData] = None,
-    abstract_data: Optional[AbstractData] = None
+    abstract_data: Optional[AbstractData] = None,
+    google_dorking_data: Optional[GoogleDorkingData] = None
 ) -> CorrelatedIntelligence:
     """
     Main function to correlate all intelligence
     """
     
-    # Calculate risk
     risk_score, risk_level = calculate_risk_score(
         domain_intel, tech_stack, github_intel, email_intel, username_intel,
         shodan_data, virustotal_data, hunter_data, securitytrails_data,
-        urlscan_data, greynoise_data, safebrowsing_data
+        urlscan_data, greynoise_data, safebrowsing_data, google_dorking_data
     )
     
     # Build attack surface
     attack_surface = build_attack_surface(
         domain_intel, tech_stack, github_intel,
-        shodan_data, virustotal_data, hunter_data
-    )    
+        shodan_data, virustotal_data, hunter_data, google_dorking_data
+    )
     # Generate findings
     key_findings = generate_key_findings(
         domain_intel, tech_stack, github_intel, email_intel, username_intel

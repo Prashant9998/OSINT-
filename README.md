@@ -6,8 +6,7 @@ A comprehensive, ethical OSINT (Open Source Intelligence) reconnaissance platfor
 
 ## 🚀 Quick Links
 
-- 📖 **[Deployment Guide](./DEPLOYMENT.md)** - Full production deployment instructions
-- ⚡ **[Quick Start](./QUICKSTART.md)** - Running locally in 5 minutes
+- ⚡ **[Quick Start](#local-development)** - Running locally in 5 minutes
 - 🌐 **Live Demo**: [Coming Soon]
 - 📚 **API Documentation**: [Swagger UI](https://osint-platform-api.onrender.com/api/docs) (once deployed)
 
@@ -83,12 +82,12 @@ A comprehensive, ethical OSINT (Open Source Intelligence) reconnaissance platfor
 ### Cloud Deployment (Recommended)
 
 **Backend (Render)**:
-- Follow [Render Deployment Guide](./render_deployment_guide.md)
 - Uses `render.yaml` Blueprint for auto-deployment
+- Recommended for production scaling
 
 **Frontend (Vercel)**:
-- Follow [Vercel Deployment Guide](./vercel_deployment_guide.md)
 - Connects seamlessly with GitHub
+- Automated CI/CD for Next.js
 
 ### Local Development
 
