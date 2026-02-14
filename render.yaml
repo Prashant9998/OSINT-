@@ -51,7 +51,7 @@ services:
     env: node
     rootDir: frontend
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: npx serve out -s -l $PORT
     plan: free
     envVars:
       - key: NEXT_PUBLIC_API_URL
