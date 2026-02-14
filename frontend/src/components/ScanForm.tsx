@@ -55,7 +55,9 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
             }
         } catch (error: any) {
             console.error('Scan initiation error:', error)
-            alert(error.response?.data?.detail || 'Failed to initiate scan')
+            const errorDetail = error.response?.data?.detail || error.message || 'Unknown error'
+            console.error('API URL called:', `${API_URL}/api/v1/scan`)
+            alert(`Scan Failed!\n\nDetails: ${errorDetail}\nTarget: ${target}\nAPI URL: ${API_URL}`)
             onError()
         } finally {
             setLoading(false)
