@@ -42,7 +42,7 @@ def generate_pdf_report(scan_result: ScanResult) -> str:
     styles.add(ParagraphStyle(name='SectionHeader', parent=styles['Heading2'], spaceBefore=15, spaceAfter=10, textColor=colors.HexColor('#00B4D8')))
     styles.add(ParagraphStyle(name='RiskCritical', parent=styles['BodyText'], textColor=colors.red, fontName='Helvetica-Bold'))
     styles.add(ParagraphStyle(name='RiskHigh', parent=styles['BodyText'], textColor=colors.orange, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle(name='RiskMedium', parent=styles['BodyText'], textColor=colors.#FFD700, fontName='Helvetica-Bold')) # Gold
+    styles.add(ParagraphStyle(name='RiskMedium', parent=styles['BodyText'], textColor=colors.HexColor('#FFD700'), fontName='Helvetica-Bold')) # Gold
     styles.add(ParagraphStyle(name='RiskLow', parent=styles['BodyText'], textColor=colors.green, fontName='Helvetica-Bold'))
     
     story = []
