@@ -5,7 +5,7 @@ OSINT Reconnaissance Platform API
 
 from fastapi import FastAPI, HTTPException, Depends, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -43,6 +43,9 @@ from osint_modules.dorking_intel import gather_google_dorking
 
 # Intelligence
 from intelligence.correlator import correlate_intelligence
+
+# Reporting
+from reports.generator import generate_pdf_report
 
 # Create FastAPI app
 app = FastAPI(
@@ -424,6 +427,44 @@ async def get_scan_status(
         current_module=result.modules_executed[-1] if result.modules_executed else None,
         message=f"Scan {result.status}"
     )
+
+
+@app.get(f"{settings.API_PREFIX}/scan/{{scan_id}}/report")
+async def get_scan_report(
+    scan_id: str,
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Generate and download PDF report
+    """
+    if scan_id not in scan_results_cache:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Scan not found"
+        )
+    
+    result = scan_results_cache[scan_id]
+    
+    if result.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Scan must be completed to generate report"
+        )
+        
+    try:
+        report_path = generate_pdf_report(result)
+        return FileResponse(
+            report_path, 
+            media_type='application/pdf', 
+            filename=f"osint_report_{scan_id}.pdf"
+        )
+    except Exception as e:
+        print(f"Report generation error: {e}")
+        # traceback.print_exc()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate report: {str(e)}"
+        )
 
 
 @app.exception_handler(Exception)

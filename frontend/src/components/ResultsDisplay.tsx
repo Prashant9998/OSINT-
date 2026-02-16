@@ -41,6 +41,32 @@ export default function ResultsDisplay({ results, onNewScan }: ResultsDisplayPro
         a.click()
     }
 
+    const handleDownloadReport = async () => {
+        try {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+            const response = await fetch(`${apiUrl}/api/v1/scan/${results.scan_id}/report`, {
+                headers: {
+                    'X-API-Key': 'osint-recon-key-2026'
+                }
+            })
+
+            if (!response.ok) throw new Error('Report generation failed')
+
+            const blob = await response.blob()
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `osint-report-${results.scan_id}.pdf`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+        } catch (error) {
+            console.error('Download failed:', error)
+            alert('Failed to download report. Please try again.')
+        }
+    }
+
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -53,6 +79,13 @@ export default function ResultsDisplay({ results, onNewScan }: ResultsDisplayPro
                     SCAN RESULTS
                 </h2>
                 <div className="flex space-x-3">
+                    <button
+                        onClick={handleDownloadReport}
+                        className="px-4 py-2 bg-cyber-green text-cyber-dark font-bold rounded-lg hover:bg-opacity-80 transition-all flex items-center space-x-2"
+                    >
+                        <FaDownload />
+                        <span>Download Report</span>
+                    </button>
                     <button
                         onClick={handleDownload}
                         className="px-4 py-2 bg-cyber-purple text-white rounded-lg hover:bg-opacity-80 transition-all flex items-center space-x-2"

@@ -14,47 +14,39 @@ A comprehensive, ethical OSINT (Open Source Intelligence) reconnaissance platfor
 
 ## 🎯 Features
 
-### Core OSINT Modules
+## 🏗️ Architecture
 
-1. **Domain Intelligence**
-   - WHOIS data extraction
-   - DNS record enumeration (A, AAAA, MX, TXT, NS, CNAME)
-   - Subdomain discovery via Certificate Transparency (crt.sh)
-   - Domain age and ownership analysis
-   - SSL/TLS certificate inspection @
+The platform follows a robust 5-layer architecture for comprehensive intelligence gathering:
 
-2. **Technology Stack Fingerprinting**
-   - HTTP header analysis
-   - Web framework detection (React, Vue, WordPress, Django, etc.)
-   - CDN identification (Cloudflare, Akamai, etc.)
-   - Security header assessment
-   - Analytics and tracking tool detection
+### 1. Data Collection Layer
+- **Domain Intelligence**: WHOIS, DNS, Subdomains (crt.sh)
+- **Email Intelligence**: MX records, Breach checks (HIBP)
+- **Phone Intelligence**: Number validation, Carrier lookup (Veriphone)
+- **Infrastructure**: Shodan (Ports/Vulns), VirusTotal (Reputation)
+- **Social**: User tracking across 14+ platforms
 
-3. **GitHub OSINT**
-   - Public repository search
-   - Configuration file discovery
-   - Exposed secrets detection
-   - API endpoint identification
-   - Developer intelligence gathering
+### 2. Data Processing Layer
+- **Input Validation**: Strict sanitation and safety checks
+- **Normalization**: Standardizing data formats (Pydantic models)
+- **Error Handling**: Graceful failure recovery per module
+- **Rate Limiting**: Preventing API abuse
 
-4. **Email Intelligence**
-   - MX record validation
-   - Email pattern detection
-   - Data breach exposure check (via HaveIBeenPwned API)
-   - Disposable email detection
+### 3. Analysis Engine
+- **Correlation**: Linking isolated data points (e.g., Domain -> IP -> Vulns)
+- **Risk Scoring**: AI-powered assessment (0-100 scale)
+- **Attack Surface Mapping**: Identifying critical exposure points
+- **Threat Actor Perspective**: Simulating external reconnaissance
 
-5. **Username OSINT (Enhanced) ⭐**
-   - **Cross-platform tracking across 14+ platforms**
-   - **Social Media**: Instagram, Facebook, Twitter, Reddit, Medium
-   - **Developer**: GitHub, GitLab, Stack Overflow, npm, PyPI
-   - **Intelligence**: Digital footprint analysis & developer activity scoring
+### 4. Visualization Dashboard
+- **Real-time Updates**: Live scan progress tracking
+- **Interactive Graphs**: Visualizing attack surface
+- **Responsive UI**: Built with Next.js, TailwindCSS, and Framer Motion
+- **Detailed Views**: Drill-down into specific modules
 
-### Intelligence Correlation
-
-- **Attack Surface Mapping**: Automatic correlation of findings across all modules
-- **Risk Scoring**: AI-powered risk assessment (0-100 scale)
-- **Actionable Intelligence**: Security recommendations based on discovered vulnerabilities
-- **Threat Actor Perspective**: Insights from an attacker's viewpoint
+### 5. Report Generator
+- **PDF Reports**: Professional executive summaries
+- **Actionable Insights**: Generated security recommendations
+- **Export Options**: JSON raw data and formatted PDF documents
 
 ---
 
