@@ -9,7 +9,7 @@ from models import (
     EmailIntelligence, UsernameIntelligence,
     ShodanData, VirusTotalData, HunterData, SecurityTrailsData,
     URLScanData, GreyNoiseData, AbstractData, SafeBrowsingData,
-    GoogleDorkingData, CorrelatedIntelligence, AttackSurfaceItem, RiskLevel
+    GoogleDorkingData, PhoneIntelligence, CorrelatedIntelligence, AttackSurfaceItem, RiskLevel
 )
 
 
@@ -26,7 +26,8 @@ def calculate_risk_score(
     urlscan_data: Optional[URLScanData] = None,
     greynoise_data: Optional[GreyNoiseData] = None,
     safebrowsing_data: Optional[SafeBrowsingData] = None,
-    google_dorking_data: Optional[GoogleDorkingData] = None
+    google_dorking_data: Optional[GoogleDorkingData] = None,
+    phone_intel: Optional[PhoneIntelligence] = None
 ) -> tuple[int, RiskLevel]:
     """
     Calculate overall risk score (0-100) and risk level
@@ -128,6 +129,13 @@ def calculate_risk_score(
     if google_dorking_data and google_dorking_data.total_results > 0:
         risk_score += min(google_dorking_data.total_results * 5, 20)
     
+    # Phone Intel Risk Factors (5 points)
+    if phone_intel:
+        if not phone_intel.valid:
+            risk_score += 5  # Invalid phone number provided
+        if phone_intel.line_type == "voip":
+            risk_score += 3  # VOIP numbers are often used in scams
+    
     # Normalize to 0-100
     risk_score = min(risk_score, max_score)
     
@@ -151,7 +159,8 @@ def build_attack_surface(
     shodan_data: Optional[ShodanData] = None,
     virustotal_data: Optional[VirusTotalData] = None,
     hunter_data: Optional[HunterData] = None,
-    google_dorking_data: Optional[GoogleDorkingData] = None
+    google_dorking_data: Optional[GoogleDorkingData] = None,
+    phone_intel: Optional[PhoneIntelligence] = None
 ) -> List[AttackSurfaceItem]:
     """
     Build comprehensive attack surface map
@@ -247,6 +256,16 @@ def build_attack_surface(
                 source_modules=["google_dorking"]
             ))
     
+    # Phone Intelligence
+    if phone_intel and phone_intel.valid:
+        attack_surface.append(AttackSurfaceItem(
+            item_type="phone_number",
+            name=phone_intel.international_number or phone_intel.phone,
+            risk_level=RiskLevel.LOW,
+            description=f"Valid {phone_intel.line_type} number found in {phone_intel.country}. Carrier: {phone_intel.carrier}",
+            source_modules=["phone_intel"]
+        ))
+    
     # Sort by risk level
     risk_order = {
         RiskLevel.CRITICAL: 0,
@@ -264,7 +283,8 @@ def generate_key_findings(
     tech_stack: Optional[TechnologyStack],
     github_intel: Optional[GitHubIntelligence],
     email_intel: Optional[EmailIntelligence],
-    username_intel: Optional[UsernameIntelligence]
+    username_intel: Optional[UsernameIntelligence],
+    phone_intel: Optional[PhoneIntelligence] = None
 ) -> List[str]:
     """
     Generate key findings summary
@@ -310,6 +330,12 @@ def generate_key_findings(
     if username_intel:
         if username_intel.total_platforms > 0:
             findings.append(f"👤 Username found on {username_intel.total_platforms} platforms")
+    
+    # Phone findings
+    if phone_intel and phone_intel.valid:
+        findings.append(f"📱 Valid {phone_intel.line_type or 'phone'} number: {phone_intel.international_number or phone_intel.phone}")
+        if phone_intel.carrier:
+            findings.append(f"📶 Carrier: {phone_intel.carrier}")
     
     return findings
 
@@ -373,7 +399,8 @@ def correlate_intelligence(
     greynoise_data: Optional[GreyNoiseData] = None,
     safebrowsing_data: Optional[SafeBrowsingData] = None,
     abstract_data: Optional[AbstractData] = None,
-    google_dorking_data: Optional[GoogleDorkingData] = None
+    google_dorking_data: Optional[GoogleDorkingData] = None,
+    phone_intel: Optional[PhoneIntelligence] = None
 ) -> CorrelatedIntelligence:
     """
     Main function to correlate all intelligence
@@ -382,17 +409,20 @@ def correlate_intelligence(
     risk_score, risk_level = calculate_risk_score(
         domain_intel, tech_stack, github_intel, email_intel, username_intel,
         shodan_data, virustotal_data, hunter_data, securitytrails_data,
-        urlscan_data, greynoise_data, safebrowsing_data, google_dorking_data
+        urlscan_data, greynoise_data, safebrowsing_data, google_dorking_data,
+        phone_intel
     )
     
     # Build attack surface
     attack_surface = build_attack_surface(
         domain_intel, tech_stack, github_intel,
-        shodan_data, virustotal_data, hunter_data, google_dorking_data
+        shodan_data, virustotal_data, hunter_data, google_dorking_data,
+        phone_intel
     )
     # Generate findings
     key_findings = generate_key_findings(
-        domain_intel, tech_stack, github_intel, email_intel, username_intel
+        domain_intel, tech_stack, github_intel, email_intel, username_intel,
+        phone_intel
     )
     
     # Generate recommendations

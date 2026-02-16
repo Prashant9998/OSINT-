@@ -29,6 +29,7 @@ from osint_modules.tech_fingerprint import fingerprint_technology_stack
 from osint_modules.github_intel import gather_github_intelligence
 from osint_modules.email_intel import gather_email_intelligence, gather_hunter_domain_search
 from osint_modules.username_intel import gather_username_intelligence
+from osint_modules.phone_intel import gather_phone_intelligence
 
 # Advanced Modules
 from osint_modules.shodan_intel import gather_shodan_intelligence
@@ -243,6 +244,11 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
             result.username_intel = await gather_username_intelligence(scan_request.target)
             modules_executed.append("username_intel")
         
+        elif scan_request.scan_type == ScanType.PHONE:
+            # Phone scan
+            result.phone_intel = await gather_phone_intelligence(scan_request.target)
+            modules_executed.append("phone_intel")
+        
         elif scan_request.scan_type == ScanType.FULL:
             # Full scan - everything
             result.domain_intel = await gather_domain_intelligence(
@@ -316,7 +322,8 @@ async def execute_scan(scan_id: str, scan_request: ScanRequest):
             urlscan_data=result.urlscan_data,
             greynoise_data=result.greynoise_data,
             safebrowsing_data=result.safebrowsing_data,
-            google_dorking_data=result.google_dorking_data
+            google_dorking_data=result.google_dorking_data,
+            phone_intel=result.phone_intel
         )
         
         # Update result

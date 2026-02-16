@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     GOOGLE_SAFE_BROWSING_KEY: Optional[str] = None
     GOOGLE_SEARCH_API_KEY: Optional[str] = None
     GOOGLE_SEARCH_CX: Optional[str] = None
+    VERIPHONE_API_KEY: Optional[str] = None
+    RAPIDAPI_KEY: Optional[str] = None
     
     # Security Settings
     SECRET_KEY: str = "your-secret-key-change-in-production"

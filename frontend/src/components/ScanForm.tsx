@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { FaSearch, FaEnvelope, FaUser, FaGlobe } from 'react-icons/fa'
+import { FaSearch, FaEnvelope, FaUser, FaGlobe, FaPhone } from 'react-icons/fa'
 import axios from 'axios'
 
 const getEffectiveApiUrl = () => {
@@ -35,7 +35,7 @@ interface ScanFormProps {
 
 export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
     const [target, setTarget] = useState('')
-    const [scanType, setScanType] = useState<'domain' | 'email' | 'username' | 'full'>('domain')
+    const [scanType, setScanType] = useState<'domain' | 'email' | 'username' | 'phone' | 'full'>('domain')
     const [deepScan, setDeepScan] = useState(false)
     const [loading, setLoading] = useState(false)
 
@@ -61,6 +61,13 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
             const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
             if (!emailRegex.test(target)) {
                 alert('Invalid Email!\n\nPlease enter a valid email address.')
+                setLoading(false)
+                return
+            }
+        } else if (scanType === 'phone') {
+            const phoneRegex = /^\+?[0-9\s-]{7,20}$/
+            if (!phoneRegex.test(target)) {
+                alert('Invalid Phone Number!\n\nPlease enter a valid phone number (digits, spaces, hyphens, optional +).')
                 setLoading(false)
                 return
             }
@@ -102,6 +109,7 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
         { value: 'domain', label: 'Domain', icon: FaGlobe, description: 'WHOIS, DNS, Subdomains, Tech Stack' },
         { value: 'email', label: 'Email', icon: FaEnvelope, description: 'MX Records, Breach Check, Validation' },
         { value: 'username', label: 'Username', icon: FaUser, description: 'Platform Search, GitHub Profile' },
+        { value: 'phone', label: 'Phone', icon: FaPhone, description: 'Carrier, Location, Line Type' },
         { value: 'full', label: 'Full Scan', icon: FaSearch, description: 'All Modules (Slower)' },
     ]
 
@@ -150,6 +158,7 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
                             TARGET {scanType === 'domain' && '(Domain)'}
                             {scanType === 'email' && '(Email Address)'}
                             {scanType === 'username' && '(Username)'}
+                            {scanType === 'phone' && '(Phone Number)'}
                         </label>
                         <div className="relative">
                             <input
@@ -160,7 +169,8 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
                                     scanType === 'domain' ? 'example.com' :
                                         scanType === 'email' ? 'user@example.com' :
                                             scanType === 'username' ? 'johndoe' :
-                                                'example.com'
+                                                scanType === 'phone' ? '+1234567890' :
+                                                    'example.com'
                                 }
                                 className="w-full px-4 py-3 bg-black bg-opacity-60 border border-cyber-cyan border-opacity-50 rounded-lg text-cyber-green placeholder-gray-500 focus:outline-none focus:border-cyber-cyan focus:border-opacity-100 transition-all terminal"
                                 required

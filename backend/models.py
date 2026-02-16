@@ -14,6 +14,7 @@ class ScanType(str, Enum):
     DOMAIN = "domain"
     EMAIL = "email"
     USERNAME = "username"
+    PHONE = "phone"
     FULL = "full"
 
 
@@ -194,6 +195,23 @@ class UsernameIntelligence(BaseModel):
     insights: List[str] = []
 
 
+# Phone OSINT Models
+class PhoneIntelligence(BaseModel):
+    """Phone number OSINT results"""
+    phone: str
+    valid: bool = False
+    format_valid: bool = False
+    international_number: Optional[str] = None
+    local_number: Optional[str] = None
+    country: Optional[str] = None
+    country_code: Optional[str] = None
+    country_prefix: Optional[str] = None
+    location: Optional[str] = None
+    carrier: Optional[str] = None
+    line_type: Optional[str] = None
+    observations: List[str] = []
+
+
 # Advanced OSINT Models
 
 class ShodanData(BaseModel):
@@ -339,6 +357,7 @@ class ScanResult(BaseModel):
     github_intel: Optional[GitHubIntelligence] = None
     email_intel: Optional[EmailIntelligence] = None
     username_intel: Optional[UsernameIntelligence] = None
+    phone_intel: Optional[PhoneIntelligence] = None
     
     # Advanced OSINT Results
     shodan_data: Optional[ShodanData] = None

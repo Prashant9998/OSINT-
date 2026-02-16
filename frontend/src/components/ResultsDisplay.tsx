@@ -5,7 +5,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import {
     FaShieldAlt, FaExclamationTriangle, FaCheckCircle, FaGlobe,
-    FaServer, FaGithub, FaEnvelope, FaUser, FaDownload, FaRedo, FaSearch
+    FaServer, FaGithub, FaEnvelope, FaUser, FaDownload, FaRedo, FaSearch, FaPhone
 } from 'react-icons/fa'
 
 interface ResultsDisplayProps {
@@ -116,6 +116,60 @@ export default function ResultsDisplay({ results, onNewScan }: ResultsDisplayPro
                             </li>
                         ))}
                     </ul>
+                </motion.div>
+            {/* Phone Intelligence */}
+            {results.phone_intel && (
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.15 }}
+                    className="p-6 bg-cyber-dark border border-cyber-blue border-opacity-50 rounded-lg"
+                >
+                    <h3 className="text-xl font-bold text-cyber-blue mb-4 flex items-center">
+                        <FaPhone className="mr-3" />
+                        PHONE INTELLIGENCE
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-black bg-opacity-40 rounded-lg">
+                            <p className="text-gray-400 text-sm">Number</p>
+                            <p className="text-xl font-bold text-white">{results.phone_intel.international_number || results.phone_intel.phone}</p>
+                        </div>
+                        <div className="p-4 bg-black bg-opacity-40 rounded-lg">
+                            <p className="text-gray-400 text-sm">Status</p>
+                            <p className={`text-xl font-bold ${results.phone_intel.valid ? 'text-cyber-green' : 'text-cyber-red'}`}>
+                                {results.phone_intel.valid ? 'Valid' : 'Invalid'}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="mt-4 p-4 bg-cyber-blue bg-opacity-10 rounded-lg border border-cyber-blue border-opacity-30">
+                        <h4 className="text-cyber-blue font-semibold mb-2 text-sm">Details</h4>
+                        <ul className="space-y-1 text-xs text-gray-300">
+                            {results.phone_intel.carrier && (
+                                <li className="flex justify-between">
+                                    <span>Carrier:</span>
+                                    <span className="text-white">{results.phone_intel.carrier}</span>
+                                </li>
+                            )}
+                            {results.phone_intel.line_type && (
+                                <li className="flex justify-between">
+                                    <span>Line Type:</span>
+                                    <span className="text-white">{results.phone_intel.line_type}</span>
+                                </li>
+                            )}
+                            {results.phone_intel.country && (
+                                <li className="flex justify-between">
+                                    <span>Country:</span>
+                                    <span className="text-white">{results.phone_intel.country} ({results.phone_intel.country_code})</span>
+                                </li>
+                            )}
+                            {results.phone_intel.location && (
+                                <li className="flex justify-between">
+                                    <span>Location:</span>
+                                    <span className="text-white">{results.phone_intel.location}</span>
+                                </li>
+                            )}
+                        </ul>
+                    </div>
                 </motion.div>
             )}
 
