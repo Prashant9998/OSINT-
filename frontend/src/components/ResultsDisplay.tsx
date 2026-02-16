@@ -117,6 +117,8 @@ export default function ResultsDisplay({ results, onNewScan }: ResultsDisplayPro
                         ))}
                     </ul>
                 </motion.div>
+            )}
+
             {/* Phone Intelligence */}
             {results.phone_intel && (
                 <motion.div
