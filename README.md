@@ -170,10 +170,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ## 🌟 Future Enhancements
 
 - [x] Social media OSINT (Instagram, Facebook added)
-- [ ] PDF report generation
+- [x] PDF report generation
 - [ ] Historical scan tracking
 - [ ] Email notifications
-- [ ] Shodan integration
+- [x] Shodan integration
 - [ ] Passive DNS lookups
 - [ ] Dark web monitoring
 - [ ] Multi-user support
