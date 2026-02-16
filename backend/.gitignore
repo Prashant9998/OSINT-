@@ -33,7 +33,7 @@ logs/
 Thumbs.db
 
 # Reports
-reports/
+generated_reports/
 *.pdf
 
 # Testing
