@@ -6,22 +6,23 @@ import { FaSpinner, FaCheck, FaSearch, FaShieldAlt, FaGithub, FaEnvelope, FaUser
 import axios from 'axios'
 
 const getEffectiveApiUrl = () => {
-    let url = process.env.NEXT_PUBLIC_API_URL || 'https://osint-backend.onrender.com'
+    if (process.env.NEXT_PUBLIC_API_URL) {
+        let url = process.env.NEXT_PUBLIC_API_URL
+        if (!url.startsWith('http')) url = `https://${url}`
+        return url.replace(/\/$/, '')
+    }
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname
         if (hostname.includes('osint-frontend-') && hostname.endsWith('.onrender.com')) {
-            const derivedUrl = `https://${hostname.replace('osint-frontend-', 'osint-backend-')}`
-            if (url.includes('osint-backend.onrender.com') && !url.includes(hostname.split('-').pop()?.split('.')[0] || '')) {
-                url = derivedUrl
-            }
+            return `https://${hostname.replace('osint-frontend-', 'osint-backend-')}`
         }
     }
-    if (url && !url.startsWith('http')) url = `https://${url}`
-    return url.replace(/\/$/, '')
+    return 'http://localhost:8000'
 }
 
-let API_URL = getEffectiveApiUrl()
-const API_KEY = 'osint-recon-key-2026'
+const API_URL = getEffectiveApiUrl()
+// ⚠️  Must match API_KEY in backend/.env
+const API_KEY = 'osint-recon-key-2026-change-this'
 
 interface ScanProgressProps {
     scanId: string
@@ -43,18 +44,20 @@ export default function ScanProgress({ scanId, onComplete, onError }: ScanProgre
     ]
 
     useEffect(() => {
+        let pollErrors = 0
+        const MAX_POLL_ERRORS = 10
+
         const checkStatus = async () => {
             try {
                 const response = await axios.get(
                     `${API_URL}/api/v1/scan/${scanId}`,
                     {
-                        headers: {
-                            'X-API-Key': API_KEY,
-                        },
+                        headers: { 'X-API-Key': API_KEY },
                     }
                 )
 
                 const result = response.data
+                pollErrors = 0   // reset on success
 
                 if (result.status === 'completed') {
                     setProgress(100)
@@ -62,27 +65,29 @@ export default function ScanProgress({ scanId, onComplete, onError }: ScanProgre
                 } else if (result.status === 'failed') {
                     onError()
                 } else {
-                    // Update progress based on completed modules
                     const completed = result.modules_executed || []
                     setCompletedModules(completed)
-
                     const estimatedProgress = Math.min((completed.length / 5) * 100, 95)
                     setProgress(estimatedProgress)
-
                     if (completed.length > 0) {
                         setCurrentModule(`Processing ${completed[completed.length - 1]}...`)
                     }
                 }
-            } catch (error) {
-                console.error('Status check error:', error)
-                // Continue polling
+            } catch (error: any) {
+                pollErrors++
+                console.error(`Status check error (attempt ${pollErrors}):`, error)
+                if (!error.response) {
+                    setCurrentModule(`⚠️ Network error — retrying... (${pollErrors}/${MAX_POLL_ERRORS})`)
+                }
+                if (pollErrors >= MAX_POLL_ERRORS) {
+                    console.error('Too many poll failures, aborting scan.')
+                    onError()
+                }
             }
         }
 
-        // Poll every 2 seconds
         const interval = setInterval(checkStatus, 2000)
-        checkStatus() // Initial check
-
+        checkStatus()
         return () => clearInterval(interval)
     }, [scanId, onComplete, onError])
 

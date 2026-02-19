@@ -6,27 +6,28 @@ import { FaSearch, FaEnvelope, FaUser, FaGlobe, FaPhone } from 'react-icons/fa'
 import axios from 'axios'
 
 const getEffectiveApiUrl = () => {
-    // 1. Check Env Var (set during build)
-    let url = process.env.NEXT_PUBLIC_API_URL || 'https://osint-backend.onrender.com'
+    // 1. Prefer explicit env var set during build / .env.local
+    if (process.env.NEXT_PUBLIC_API_URL) {
+        let url = process.env.NEXT_PUBLIC_API_URL
+        if (!url.startsWith('http')) url = `https://${url}`
+        return url.replace(/\/$/, '')
+    }
 
-    // 2. Smart Discovery: If we are on Render, try to match the backend suffix
+    // 2. Smart Discovery for Render deployments
     if (typeof window !== 'undefined') {
         const hostname = window.location.hostname
         if (hostname.includes('osint-frontend-') && hostname.endsWith('.onrender.com')) {
-            const derivedUrl = `https://${hostname.replace('osint-frontend-', 'osint-backend-')}`
-            // Use derived URL if current one is the hardcoded default
-            if (url.includes('osint-backend.onrender.com') && !url.includes(hostname.split('-').pop()?.split('.')[0] || '')) {
-                url = derivedUrl
-            }
+            return `https://${hostname.replace('osint-frontend-', 'osint-backend-')}`
         }
     }
 
-    if (url && !url.startsWith('http')) url = `https://${url}`
-    return url.replace(/\/$/, '')
+    // 3. Local development fallback
+    return 'http://localhost:8000'
 }
 
-let API_URL = getEffectiveApiUrl()
-const API_KEY = 'osint-recon-key-2026'
+const API_URL = getEffectiveApiUrl()
+// ⚠️  Must match API_KEY in backend/.env
+const API_KEY = 'osint-recon-key-2026-change-this'
 
 interface ScanFormProps {
     onScanInitiated: (scanId: string) => void
@@ -96,9 +97,35 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
             }
         } catch (error: any) {
             console.error('Scan initiation error:', error)
-            const errorDetail = error.response?.data?.detail || error.message || 'Unknown error'
             console.error('API URL called:', `${API_URL}/api/v1/scan`)
-            alert(`Scan Failed!\n\nDetails: ${errorDetail}\nTarget: ${target}\nAPI URL: ${API_URL}`)
+
+            let friendlyMsg = ''
+            if (!error.response) {
+                // No response at all → backend not reachable
+                friendlyMsg =
+                    `❌ Cannot reach the backend server.\n\n` +
+                    `URL tried: ${API_URL}\n\n` +
+                    `Possible fixes:\n` +
+                    `• Run the backend: cd backend && python main.py\n` +
+                    `• Set NEXT_PUBLIC_API_URL in frontend/.env.local\n` +
+                    `• Check CORS — your Render/frontend URL must be in backend ALLOWED_ORIGINS`
+            } else if (error.response.status === 401 || error.response.status === 403) {
+                friendlyMsg =
+                    `❌ Authentication Failed (${error.response.status})\n\n` +
+                    `The API key sent by the frontend does not match the backend.\n` +
+                    `Frontend key: ${API_KEY}\n` +
+                    `Fix: ensure NEXT_PUBLIC_API_KEY or the hardcoded key in ScanForm.tsx matches backend/.env API_KEY`
+            } else if (error.response.status === 429) {
+                friendlyMsg = `⏱️ Rate Limit Exceeded\n\nToo many requests. Please wait a minute and try again.`
+            } else if (error.response.status === 400) {
+                friendlyMsg = `❌ Bad Request\n\n${error.response.data?.detail || 'Invalid target or scan parameters.'}`
+            } else {
+                friendlyMsg =
+                    `❌ Scan Failed (HTTP ${error.response.status})\n\n` +
+                    `${error.response.data?.detail || error.message}`
+            }
+
+            alert(friendlyMsg)
             onError()
         } finally {
             setLoading(false)
