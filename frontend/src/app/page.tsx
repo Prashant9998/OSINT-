@@ -2,17 +2,19 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { FaShieldAlt, FaSearch, FaGithub, FaEnvelope, FaUser, FaExclamationTriangle, FaSignOutAlt } from 'react-icons/fa'
+import { FaShieldAlt, FaSearch, FaGithub, FaEnvelope, FaUser, FaExclamationTriangle, FaSignOutAlt, FaServer } from 'react-icons/fa'
 import ScanForm from '../components/ScanForm'
 import ScanProgress from '../components/ScanProgress'
 import ResultsDisplay from '../components/ResultsDisplay'
 import AuthPage from '../components/AuthPage'
+import BackendWakeup, { BackendState } from '../components/BackendWakeup'
 
 export default function Home() {
     const [authenticated, setAuthenticated] = useState<boolean | null>(null)
     const [scanId, setScanId] = useState<string | null>(null)
     const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'completed' | 'error'>('idle')
     const [scanResults, setScanResults] = useState<any>(null)
+    const [backendStatus, setBackendStatus] = useState<BackendState>('checking')
 
     // Re-hydrate auth from sessionStorage on mount
     useEffect(() => {
@@ -62,6 +64,9 @@ export default function Home() {
         return <AuthPage onAuthenticated={handleAuthenticated} />
     }
 
+    const backendOnline = backendStatus === 'online'
+    const backendChecking = backendStatus === 'checking' || backendStatus === 'waking'
+
     // ── Main dashboard ───────────────────────────────────────────────────────
     return (
         <div className="min-h-screen relative overflow-x-hidden">
@@ -88,10 +93,22 @@ export default function Home() {
                         </div>
 
                         <div className="flex items-center gap-6">
-                            <div className="flex items-center space-x-2 text-cyber-green text-sm">
-                                <div className="w-2 h-2 bg-cyber-green rounded-full animate-pulse" />
-                                <span>SYSTEM OPERATIONAL</span>
+                            {/* Backend status pill */}
+                            <div className={`flex items-center gap-2 text-xs font-mono px-3 py-1 rounded-full border ${backendStatus === 'online'
+                                    ? 'border-cyber-green text-cyber-green bg-cyber-green bg-opacity-10'
+                                    : backendStatus === 'offline'
+                                        ? 'border-cyber-red text-cyber-red bg-cyber-red bg-opacity-10'
+                                        : 'border-cyber-yellow text-cyber-yellow bg-cyber-yellow bg-opacity-10'
+                                }`}>
+                                <FaServer className={backendChecking ? 'animate-pulse' : ''} />
+                                <span>
+                                    {backendStatus === 'online' ? 'BACKEND ONLINE' :
+                                        backendStatus === 'offline' ? 'BACKEND OFFLINE' :
+                                            backendStatus === 'waking' ? 'WAKING UP…' :
+                                                'CHECKING…'}
+                                </span>
                             </div>
+
                             {/* Logout */}
                             <button
                                 id="logout-btn"
@@ -106,6 +123,11 @@ export default function Home() {
                     </motion.div>
                 </div>
             </header>
+
+            {/* Backend wake-up banner — shown below header */}
+            <div className="container mx-auto px-4">
+                <BackendWakeup onStatusChange={setBackendStatus} />
+            </div>
 
             {/* Main Content */}
             <main className="relative z-10 container mx-auto px-4 py-8">
@@ -161,9 +183,35 @@ export default function Home() {
                     </motion.div>
                 )}
 
-                {/* Scan Form */}
+                {/* Scan Form — disabled with overlay while backend is starting */}
                 {scanStatus === 'idle' && (
-                    <ScanForm onScanInitiated={handleScanInitiated} onError={handleError} />
+                    <div className="relative">
+                        <ScanForm onScanInitiated={handleScanInitiated} onError={handleError} />
+
+                        {/* Overlay while backend waking */}
+                        {!backendOnline && backendStatus !== 'offline' && (
+                            <div className="absolute inset-0 bg-cyber-darker bg-opacity-70 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center z-20 gap-3">
+                                <div className="w-10 h-10 border-2 border-cyber-yellow border-t-transparent rounded-full animate-spin" />
+                                <p className="text-cyber-yellow text-sm font-bold tracking-widest uppercase animate-pulse">
+                                    Waiting for backend to wake up…
+                                </p>
+                                <p className="text-gray-500 text-xs">Render free-tier cold start — takes ~30–60 seconds</p>
+                            </div>
+                        )}
+
+                        {/* Overlay when backend is offline */}
+                        {backendStatus === 'offline' && (
+                            <div className="absolute inset-0 bg-cyber-darker bg-opacity-80 backdrop-blur-sm rounded-lg flex flex-col items-center justify-center z-20 gap-3">
+                                <FaExclamationTriangle className="text-4xl text-cyber-red" />
+                                <p className="text-cyber-red text-sm font-bold tracking-widest uppercase">
+                                    Backend Unreachable
+                                </p>
+                                <p className="text-gray-500 text-xs text-center max-w-xs">
+                                    The backend did not respond. Check Render dashboard for service status.
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 )}
 
                 {/* Scan Progress */}
