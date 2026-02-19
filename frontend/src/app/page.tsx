@@ -1,16 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { FaShieldAlt, FaSearch, FaGithub, FaEnvelope, FaUser, FaExclamationTriangle } from 'react-icons/fa'
+import { FaShieldAlt, FaSearch, FaGithub, FaEnvelope, FaUser, FaExclamationTriangle, FaSignOutAlt } from 'react-icons/fa'
 import ScanForm from '../components/ScanForm'
 import ScanProgress from '../components/ScanProgress'
 import ResultsDisplay from '../components/ResultsDisplay'
+import AuthPage from '../components/AuthPage'
 
 export default function Home() {
+    const [authenticated, setAuthenticated] = useState<boolean | null>(null)
     const [scanId, setScanId] = useState<string | null>(null)
     const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'completed' | 'error'>('idle')
     const [scanResults, setScanResults] = useState<any>(null)
+
+    // Re-hydrate auth from sessionStorage on mount
+    useEffect(() => {
+        const saved = sessionStorage.getItem('osint_auth')
+        setAuthenticated(saved === '1')
+    }, [])
+
+    const handleAuthenticated = () => setAuthenticated(true)
+
+    const handleLogout = () => {
+        sessionStorage.removeItem('osint_auth')
+        setAuthenticated(false)
+        setScanId(null)
+        setScanStatus('idle')
+        setScanResults(null)
+    }
 
     const handleScanInitiated = (id: string) => {
         setScanId(id)
@@ -22,9 +40,7 @@ export default function Home() {
         setScanStatus('completed')
     }
 
-    const handleError = () => {
-        setScanStatus('error')
-    }
+    const handleError = () => setScanStatus('error')
 
     const handleNewScan = () => {
         setScanId(null)
@@ -32,10 +48,25 @@ export default function Home() {
         setScanResults(null)
     }
 
+    // ── Hydration guard ──────────────────────────────────────────────────────
+    if (authenticated === null) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-cyber-cyan border-t-transparent rounded-full animate-spin" />
+            </div>
+        )
+    }
+
+    // ── Auth gate ────────────────────────────────────────────────────────────
+    if (!authenticated) {
+        return <AuthPage onAuthenticated={handleAuthenticated} />
+    }
+
+    // ── Main dashboard ───────────────────────────────────────────────────────
     return (
         <div className="min-h-screen relative overflow-x-hidden">
             {/* Background Grid */}
-            <div className="fixed inset-0 bg-grid opacity-20" style={{ backgroundSize: '50px 50px' }}></div>
+            <div className="fixed inset-0 bg-grid opacity-20" style={{ backgroundSize: '50px 50px' }} />
 
             {/* Header */}
             <header className="relative z-10 border-b border-cyber-cyan border-opacity-30 bg-cyber-dark bg-opacity-80 backdrop-blur">
@@ -55,9 +86,22 @@ export default function Home() {
                                 <p className="text-sm text-gray-400">Information Gathering Platform</p>
                             </div>
                         </div>
-                        <div className="flex items-center space-x-2 text-cyber-green text-sm">
-                            <div className="w-2 h-2 bg-cyber-green rounded-full animate-pulse"></div>
-                            <span>SYSTEM OPERATIONAL</span>
+
+                        <div className="flex items-center gap-6">
+                            <div className="flex items-center space-x-2 text-cyber-green text-sm">
+                                <div className="w-2 h-2 bg-cyber-green rounded-full animate-pulse" />
+                                <span>SYSTEM OPERATIONAL</span>
+                            </div>
+                            {/* Logout */}
+                            <button
+                                id="logout-btn"
+                                onClick={handleLogout}
+                                title="Logout"
+                                className="flex items-center gap-2 px-3 py-1.5 text-xs text-gray-400 border border-gray-700 rounded-lg hover:border-cyber-red hover:text-cyber-red transition-all duration-200"
+                            >
+                                <FaSignOutAlt />
+                                Logout
+                            </button>
                         </div>
                     </motion.div>
                 </div>
@@ -124,11 +168,7 @@ export default function Home() {
 
                 {/* Scan Progress */}
                 {scanStatus === 'scanning' && scanId && (
-                    <ScanProgress
-                        scanId={scanId}
-                        onComplete={handleScanComplete}
-                        onError={handleError}
-                    />
+                    <ScanProgress scanId={scanId} onComplete={handleScanComplete} onError={handleError} />
                 )}
 
                 {/* Results */}
@@ -159,7 +199,7 @@ export default function Home() {
             {/* Footer */}
             <footer className="relative z-10 border-t border-cyber-cyan border-opacity-30 bg-cyber-dark bg-opacity-80 backdrop-blur mt-16">
                 <div className="container mx-auto px-4 py-6 text-center text-gray-400 text-sm">
-                    <p>OSINT Reconnaissance Platform v1.0 | Built for Ethical Hacking & Security Research</p>
+                    <p>OSINT Reconnaissance Platform v1.0 | Built for Ethical Hacking &amp; Security Research</p>
                     <p className="mt-2 text-xs">
                         Always obtain proper authorization before conducting reconnaissance activities.
                     </p>
