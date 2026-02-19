@@ -6,9 +6,10 @@ const nextConfig = {
     images: {
         unoptimized: true,
     },
-    env: {
-        NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'https://osint-backend.onrender.com',
-    },
+    // ⚠️ Do NOT hardcode a fallback API URL here.
+    // NEXT_PUBLIC_API_URL must be set as an environment variable in Render
+    // (render.yaml already pulls it from the backend service URL automatically).
+    // For local dev, set it in frontend/.env.local
 }
 
 module.exports = nextConfig

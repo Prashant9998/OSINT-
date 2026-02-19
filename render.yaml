@@ -17,7 +17,7 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: API_KEY
-        value: osint-recon-key-2026
+        value: osint-recon-key-2026-change-this
       - key: ALLOWED_ORIGINS
         value: "*"
       # OSINT API Keys
@@ -50,7 +50,7 @@ services:
     name: osint-frontend
     env: node
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npx serve --version > /dev/null 2>&1 || npm install -g serve && npm run build
     startCommand: npx serve out -s -l $PORT
     plan: free
     envVars:
