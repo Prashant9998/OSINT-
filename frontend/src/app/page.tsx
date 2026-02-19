@@ -15,12 +15,18 @@ export default function Home() {
     const [scanStatus, setScanStatus] = useState<'idle' | 'scanning' | 'completed' | 'error'>('idle')
     const [scanResults, setScanResults] = useState<any>(null)
     const [backendStatus, setBackendStatus] = useState<BackendState>('checking')
+    const [confirmedApiUrl, setConfirmedApiUrl] = useState<string | undefined>(undefined)
 
     // Re-hydrate auth from sessionStorage on mount
     useEffect(() => {
         const saved = sessionStorage.getItem('osint_auth')
         setAuthenticated(saved === '1')
     }, [])
+
+    const handleBackendStatus = (status: BackendState, workingUrl?: string) => {
+        setBackendStatus(status)
+        if (workingUrl) setConfirmedApiUrl(workingUrl)
+    }
 
     const handleAuthenticated = () => setAuthenticated(true)
 
@@ -95,10 +101,10 @@ export default function Home() {
                         <div className="flex items-center gap-6">
                             {/* Backend status pill */}
                             <div className={`flex items-center gap-2 text-xs font-mono px-3 py-1 rounded-full border ${backendStatus === 'online'
-                                    ? 'border-cyber-green text-cyber-green bg-cyber-green bg-opacity-10'
-                                    : backendStatus === 'offline'
-                                        ? 'border-cyber-red text-cyber-red bg-cyber-red bg-opacity-10'
-                                        : 'border-cyber-yellow text-cyber-yellow bg-cyber-yellow bg-opacity-10'
+                                ? 'border-cyber-green text-cyber-green bg-cyber-green bg-opacity-10'
+                                : backendStatus === 'offline'
+                                    ? 'border-cyber-red text-cyber-red bg-cyber-red bg-opacity-10'
+                                    : 'border-cyber-yellow text-cyber-yellow bg-cyber-yellow bg-opacity-10'
                                 }`}>
                                 <FaServer className={backendChecking ? 'animate-pulse' : ''} />
                                 <span>
@@ -126,7 +132,7 @@ export default function Home() {
 
             {/* Backend wake-up banner — shown below header */}
             <div className="container mx-auto px-4">
-                <BackendWakeup onStatusChange={setBackendStatus} />
+                <BackendWakeup onStatusChange={handleBackendStatus} />
             </div>
 
             {/* Main Content */}
@@ -186,7 +192,11 @@ export default function Home() {
                 {/* Scan Form — disabled with overlay while backend is starting */}
                 {scanStatus === 'idle' && (
                     <div className="relative">
-                        <ScanForm onScanInitiated={handleScanInitiated} onError={handleError} />
+                        <ScanForm
+                            onScanInitiated={handleScanInitiated}
+                            onError={handleError}
+                            overrideApiUrl={confirmedApiUrl}
+                        />
 
                         {/* Overlay while backend waking */}
                         {!backendOnline && backendStatus !== 'offline' && (

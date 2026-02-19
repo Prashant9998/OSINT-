@@ -32,9 +32,11 @@ const API_KEY = 'osint-recon-key-2026-change-this'
 interface ScanFormProps {
     onScanInitiated: (scanId: string) => void
     onError: () => void
+    overrideApiUrl?: string   // working URL discovered by BackendWakeup
 }
 
-export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
+export default function ScanForm({ onScanInitiated, onError, overrideApiUrl }: ScanFormProps) {
+    const effectiveUrl = (overrideApiUrl || API_URL).replace(/\/$/, '')
     const [target, setTarget] = useState('')
     const [scanType, setScanType] = useState<'domain' | 'email' | 'username' | 'phone' | 'full'>('domain')
     const [deepScan, setDeepScan] = useState(false)
@@ -76,7 +78,7 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
 
         try {
             const response = await axios.post(
-                `${API_URL}/api/v1/scan`,
+                `${effectiveUrl}/api/v1/scan`,
                 {
                     target: target.trim(),
                     scan_type: scanType,
@@ -97,14 +99,13 @@ export default function ScanForm({ onScanInitiated, onError }: ScanFormProps) {
             }
         } catch (error: any) {
             console.error('Scan initiation error:', error)
-            console.error('API URL called:', `${API_URL}/api/v1/scan`)
+            console.error('API URL called:', `${effectiveUrl}/api/v1/scan`)
 
             let friendlyMsg = ''
             if (!error.response) {
-                // No response at all → backend not reachable
                 friendlyMsg =
                     `❌ Cannot reach the backend server.\n\n` +
-                    `URL tried: ${API_URL}\n\n` +
+                    `URL tried: ${effectiveUrl}\n\n` +
                     `Possible fixes:\n` +
                     `• Run the backend: cd backend && python main.py\n` +
                     `• Set NEXT_PUBLIC_API_URL in frontend/.env.local\n` +

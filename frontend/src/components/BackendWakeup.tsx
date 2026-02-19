@@ -3,65 +3,100 @@
 /**
  * BackendWakeup
  * ─────────────
- * Render free-tier services spin down after ~15 min of inactivity.
- * The first request after sleep takes 30–60 s to wake up.
+ * Handles two distinct problems with Render free-tier:
  *
- * This component:
- *  1. Pings /health every 3 s until the backend responds.
- *  2. Shows a dismissible banner with live countdown / status.
- *  3. Reports the backend status to the parent so it can disable the scan form.
+ *  1. COLD START  — backend sleeps after 15 min, takes 30–60 s to wake.
+ *  2. WRONG URL   — NEXT_PUBLIC_API_URL may point to a dead URL if the
+ *                   Render service was re-created and got a new hostname.
+ *
+ * Strategy:
+ *  - Build a candidate list of backend URLs from multiple sources.
+ *  - Ping ALL of them concurrently every 5 s.
+ *  - Use the first one that responds.
+ *  - Report the working URL to the parent so ScanForm uses it too.
  */
 
 import { useEffect, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { FaServer, FaCheckCircle, FaExclamationTriangle, FaTimes } from 'react-icons/fa'
+import { FaServer, FaCheckCircle, FaExclamationTriangle, FaTimes, FaSync } from 'react-icons/fa'
 import axios from 'axios'
 
-// ── Reuse the same URL resolution as ScanForm / ScanProgress ─────────────────
-const getEffectiveApiUrl = () => {
+// ── Build candidate URL list ──────────────────────────────────────────────────
+function getCandidateUrls(): string[] {
+    const candidates = new Set<string>()
+
+    // 1. Env var (injected by Render via fromService)
     if (process.env.NEXT_PUBLIC_API_URL) {
-        let url = process.env.NEXT_PUBLIC_API_URL
-        if (!url.startsWith('http')) url = `https://${url}`
-        return url.replace(/\/$/, '')
+        let u = process.env.NEXT_PUBLIC_API_URL
+        if (!u.startsWith('http')) u = `https://${u}`
+        candidates.add(u.replace(/\/$/, ''))
     }
+
     if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname
-        if (hostname.includes('osint-frontend-') && hostname.endsWith('.onrender.com')) {
-            return `https://${hostname.replace('osint-frontend-', 'osint-backend-')}`
+        const host = window.location.hostname
+
+        // 2. Smart mirror: osint-frontend-XXXX.onrender.com → osint-backend-XXXX.onrender.com
+        if (host.includes('osint-frontend-') && host.endsWith('.onrender.com')) {
+            candidates.add(`https://${host.replace('osint-frontend-', 'osint-backend-')}`)
+        }
+
+        // 3. Plain service name fallbacks on onrender.com
+        if (host.endsWith('.onrender.com')) {
+            candidates.add('https://osint-backend.onrender.com')
+            candidates.add('https://osint-platform-api.onrender.com')
+            candidates.add('https://osint-api.onrender.com')
         }
     }
-    return 'http://localhost:8000'
+
+    // 4. localhost for dev
+    candidates.add('http://localhost:8000')
+
+    return Array.from(candidates)
 }
 
-const API_URL = getEffectiveApiUrl()
-const HEALTH_URL = `${API_URL}/health`
-const MAX_WAIT_SECONDS = 90   // give Render up to 90 s to cold-start
+const CANDIDATES = getCandidateUrls()
+const MAX_WAIT_SECONDS = 120
 
 export type BackendState = 'checking' | 'waking' | 'online' | 'offline'
 
 interface BackendWakeupProps {
-    onStatusChange?: (status: BackendState) => void
+    onStatusChange?: (status: BackendState, workingUrl?: string) => void
 }
 
 export default function BackendWakeup({ onStatusChange }: BackendWakeupProps) {
     const [status, setStatus] = useState<BackendState>('checking')
     const [elapsed, setElapsed] = useState(0)
     const [attempt, setAttempt] = useState(0)
+    const [workingUrl, setWorkingUrl] = useState<string>('')
+    const [triedUrls, setTriedUrls] = useState<string[]>([])
     const [dismissed, setDismissed] = useState(false)
 
-    const check = useCallback(async () => {
-        try {
-            await axios.get(HEALTH_URL, { timeout: 8000 })
-            setStatus('online')
-            onStatusChange?.('online')
-        } catch {
-            setStatus(prev => prev === 'checking' ? 'waking' : prev)
-            onStatusChange?.('waking')
+    // Try all candidate URLs simultaneously — first to respond wins
+    const checkAll = useCallback(async () => {
+        const results = await Promise.allSettled(
+            CANDIDATES.map(url =>
+                axios.get(`${url}/health`, { timeout: 8000 }).then(() => url)
+            )
+        )
+
+        for (const r of results) {
+            if (r.status === 'fulfilled') {
+                const url = r.value
+                setWorkingUrl(url)
+                setStatus('online')
+                onStatusChange?.('online', url)
+                return
+            }
         }
+
+        // All failed
+        setTriedUrls(CANDIDATES)
+        setStatus(prev => prev === 'checking' ? 'waking' : prev)
+        onStatusChange?.('waking')
         setAttempt(a => a + 1)
     }, [onStatusChange])
 
-    // Countdown timer
+    // Countdown
     useEffect(() => {
         if (status === 'online' || status === 'offline') return
         const t = setInterval(() => setElapsed(e => e + 1), 1000)
@@ -76,88 +111,73 @@ export default function BackendWakeup({ onStatusChange }: BackendWakeupProps) {
         }
     }, [elapsed, status, onStatusChange])
 
-    // Poll /health every 3 s
+    // Poll every 5 s
     useEffect(() => {
-        check()
+        checkAll()
         const interval = setInterval(() => {
             if (status === 'online' || status === 'offline') {
                 clearInterval(interval)
                 return
             }
-            check()
-        }, 3000)
+            checkAll()
+        }, 5000)
         return () => clearInterval(interval)
-    }, [check, status])
+    }, [checkAll, status])
 
-    // Auto-dismiss 4 s after coming online
+    // Auto-dismiss 5 s after online
     useEffect(() => {
         if (status === 'online') {
-            const t = setTimeout(() => setDismissed(true), 4000)
+            const t = setTimeout(() => setDismissed(true), 5000)
             return () => clearTimeout(t)
         }
     }, [status])
 
     if (dismissed) return null
-
-    // ── Don't show anything if already online on first check ─────────────────
     if (status === 'checking') return null
 
-    const statusConfig = {
+    // ── UI config per state ───────────────────────────────────────────────────
+    const cfg = {
         waking: {
-            icon: <FaServer className="text-cyber-yellow animate-pulse text-lg" />,
-            color: 'border-cyber-yellow',
-            bg: 'bg-cyber-yellow',
-            text: 'text-cyber-yellow',
+            border: 'border-cyber-yellow', bg: 'bg-cyber-yellow', text: 'text-cyber-yellow',
+            icon: <FaServer className="text-cyber-yellow animate-pulse" />,
             title: '⏳ Backend Waking Up…',
-            body: `Render free-tier service is starting (${elapsed}s / ~60s). Please wait — scan will work once online.`,
+            body: `Pinging ${CANDIDATES.length} possible backend URLs (${elapsed}s / max ${MAX_WAIT_SECONDS}s). Scan will unlock automatically once connected.`,
             progress: Math.min((elapsed / 60) * 100, 95),
         },
         online: {
-            icon: <FaCheckCircle className="text-cyber-green text-lg" />,
-            color: 'border-cyber-green',
-            bg: 'bg-cyber-green',
-            text: 'text-cyber-green',
+            border: 'border-cyber-green', bg: 'bg-cyber-green', text: 'text-cyber-green',
+            icon: <FaCheckCircle className="text-cyber-green" />,
             title: '✅ Backend Online',
-            body: `Connected to ${API_URL} in ${elapsed}s. You can now initiate scans.`,
+            body: `Connected to ${workingUrl} in ${elapsed}s. You can now initiate scans.`,
             progress: 100,
         },
         offline: {
-            icon: <FaExclamationTriangle className="text-cyber-red text-lg" />,
-            color: 'border-cyber-red',
-            bg: 'bg-cyber-red',
-            text: 'text-cyber-red',
+            border: 'border-cyber-red', bg: 'bg-cyber-red', text: 'text-cyber-red',
+            icon: <FaExclamationTriangle className="text-cyber-red" />,
             title: '❌ Backend Unreachable',
-            body: `Could not reach ${API_URL} after ${elapsed}s. The backend service may be down or mis-configured.`,
+            body: `Tried ${CANDIDATES.length} URLs for ${elapsed}s — none responded. See instructions below.`,
             progress: 100,
         },
-        checking: {
-            icon: null, color: '', bg: '', text: '', title: '', body: '', progress: 0,
-        },
-    }
-
-    const cfg = statusConfig[status]
+        checking: { border: '', bg: '', text: '', icon: null, title: '', body: '', progress: 0 },
+    }[status]
 
     return (
         <AnimatePresence>
             <motion.div
                 key="backend-banner"
-                initial={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, y: -16 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className={`relative z-20 mx-auto max-w-4xl mt-4 rounded-xl border ${cfg.color} border-opacity-50 bg-cyber-dark bg-opacity-90 backdrop-blur p-4`}
-                style={{ boxShadow: '0 0 20px rgba(0,0,0,0.5)' }}
+                exit={{ opacity: 0, y: -16 }}
+                className={`relative z-20 mx-auto max-w-4xl mt-4 rounded-xl border ${cfg.border} border-opacity-40 bg-cyber-dark bg-opacity-90 backdrop-blur p-4`}
+                style={{ boxShadow: '0 0 24px rgba(0,0,0,0.6)' }}
             >
-                {/* Header row */}
+                {/* Header */}
                 <div className="flex items-center justify-between mb-2">
                     <div className={`flex items-center gap-2 font-bold ${cfg.text} text-sm tracking-wide`}>
                         {cfg.icon}
                         {cfg.title}
                     </div>
-                    <button
-                        onClick={() => setDismissed(true)}
-                        className="text-gray-500 hover:text-gray-300 transition-colors text-xs"
-                        title="Dismiss"
-                    >
+                    <button onClick={() => setDismissed(true)} className="text-gray-600 hover:text-gray-300 transition-colors">
                         <FaTimes />
                     </button>
                 </div>
@@ -166,7 +186,7 @@ export default function BackendWakeup({ onStatusChange }: BackendWakeupProps) {
                 <p className="text-gray-400 text-xs leading-relaxed mb-3">{cfg.body}</p>
 
                 {/* Progress bar */}
-                <div className="h-1.5 bg-black bg-opacity-50 rounded-full overflow-hidden">
+                <div className="h-1.5 bg-black bg-opacity-50 rounded-full overflow-hidden mb-3">
                     <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${cfg.progress}%` }}
@@ -175,11 +195,46 @@ export default function BackendWakeup({ onStatusChange }: BackendWakeupProps) {
                     />
                 </div>
 
-                {/* Attempt counter */}
+                {/* URL list while waking */}
                 {status === 'waking' && (
-                    <p className="text-gray-600 text-xs mt-1">
-                        Ping attempt #{attempt} · next in 3 s · backend URL: {API_URL}
-                    </p>
+                    <div className="text-xs text-gray-600 space-y-0.5 mb-2">
+                        <p className="text-gray-500 mb-1">Trying these URLs (attempt #{attempt}):</p>
+                        {CANDIDATES.map(url => (
+                            <div key={url} className="flex items-center gap-2 font-mono">
+                                <FaSync className="animate-spin text-cyber-yellow opacity-50 text-xs shrink-0" />
+                                <span>{url}/health</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* OFFLINE — actionable instructions */}
+                {status === 'offline' && (
+                    <div className="mt-3 p-3 bg-black bg-opacity-40 rounded-lg border border-gray-700 text-xs space-y-2">
+                        <p className="text-cyber-yellow font-bold uppercase tracking-wide">📋 How to fix:</p>
+                        <ol className="text-gray-400 space-y-1 list-decimal list-inside">
+                            <li>
+                                Go to&nbsp;
+                                <a href="https://dashboard.render.com" target="_blank" rel="noreferrer"
+                                    className="text-cyber-cyan underline hover:text-white">
+                                    dashboard.render.com
+                                </a>
+                                &nbsp;→ open your <strong className="text-white">osint-backend</strong> service.
+                            </li>
+                            <li>Check <strong className="text-white">Logs</strong> tab — look for build or runtime errors.</li>
+                            <li>
+                                Copy the backend URL from the top of the service page, then set it in Render's&nbsp;
+                                <strong className="text-white">Environment</strong> tab for the frontend:
+                                <code className="block mt-1 bg-black px-2 py-1 rounded text-cyber-cyan">
+                                    NEXT_PUBLIC_API_URL = https://your-backend.onrender.com
+                                </code>
+                            </li>
+                            <li>Trigger a manual redeploy of the frontend after saving the env var.</li>
+                        </ol>
+                        <p className="text-gray-600 mt-2">
+                            URLs tried: {CANDIDATES.join(' · ')}
+                        </p>
+                    </div>
                 )}
             </motion.div>
         </AnimatePresence>
