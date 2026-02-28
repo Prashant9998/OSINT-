@@ -2,75 +2,55 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { FaSearch, FaEnvelope, FaUser, FaGlobe, FaPhone } from 'react-icons/fa'
+import { FaSearch, FaEnvelope, FaUser, FaGlobe, FaPhone, FaBolt, FaExclamationCircle } from 'react-icons/fa'
 import axios from 'axios'
-
-const getEffectiveApiUrl = () => {
-    // 1. Prefer explicit env var set during build / .env.local
-    if (process.env.NEXT_PUBLIC_API_URL) {
-        let url = process.env.NEXT_PUBLIC_API_URL
-        if (!url.startsWith('http')) url = `https://${url}`
-        return url.replace(/\/$/, '')
-    }
-
-    // 2. Smart Discovery for Render deployments
-    if (typeof window !== 'undefined') {
-        const hostname = window.location.hostname
-        if (hostname.includes('osint-frontend-') && hostname.endsWith('.onrender.com')) {
-            return `https://${hostname.replace('osint-frontend-', 'osint-backend-')}`
-        }
-    }
-
-    // 3. Local development fallback
-    return 'http://localhost:8000'
-}
-
-const API_URL = getEffectiveApiUrl()
-// ⚠️  Must match API_KEY in backend/.env
-const API_KEY = 'osint-recon-key-2026-change-this'
+import { API_KEY, getEffectiveApiUrl } from '../lib/api'
 
 interface ScanFormProps {
     onScanInitiated: (scanId: string) => void
     onError: () => void
-    overrideApiUrl?: string   // working URL discovered by BackendWakeup
+    overrideApiUrl?: string
 }
 
 export default function ScanForm({ onScanInitiated, onError, overrideApiUrl }: ScanFormProps) {
-    const effectiveUrl = (overrideApiUrl || API_URL).replace(/\/$/, '')
+    const effectiveUrl = (overrideApiUrl || getEffectiveApiUrl()).replace(/\/$/, '')
     const [target, setTarget] = useState('')
     const [scanType, setScanType] = useState<'domain' | 'email' | 'username' | 'phone' | 'full'>('domain')
     const [deepScan, setDeepScan] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+        setError('')
 
         if (!target.trim()) {
-            alert('Please enter a target')
+            setError('Please enter a target')
             return
         }
 
         setLoading(true)
 
-        // Basic Frontend Validation
+        // Frontend Validation
         if (scanType === 'domain' || scanType === 'full') {
             const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/
-            if (!target.includes('.') || !domainRegex.test(target.replace('http://', '').replace('https://', '').split('/')[0])) {
-                alert('Invalid Domain!\n\nPlease enter a valid domain name (e.g., google.com).')
+            const cleaned = target.replace('http://', '').replace('https://', '').split('/')[0]
+            if (!target.includes('.') || !domainRegex.test(cleaned)) {
+                setError('Invalid domain. Please enter a valid domain name (e.g., google.com).')
                 setLoading(false)
                 return
             }
         } else if (scanType === 'email') {
             const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
             if (!emailRegex.test(target)) {
-                alert('Invalid Email!\n\nPlease enter a valid email address.')
+                setError('Invalid email address format.')
                 setLoading(false)
                 return
             }
         } else if (scanType === 'phone') {
             const phoneRegex = /^\+?[0-9\s-]{7,20}$/
             if (!phoneRegex.test(target)) {
-                alert('Invalid Phone Number!\n\nPlease enter a valid phone number (digits, spaces, hyphens, optional +).')
+                setError('Invalid phone number. Use digits, spaces, hyphens, optional +.')
                 setLoading(false)
                 return
             }
@@ -97,36 +77,20 @@ export default function ScanForm({ onScanInitiated, onError, overrideApiUrl }: S
             } else {
                 throw new Error('No scan ID received')
             }
-        } catch (error: any) {
-            console.error('Scan initiation error:', error)
-            console.error('API URL called:', `${effectiveUrl}/api/v1/scan`)
+        } catch (err: any) {
+            console.error('Scan initiation error:', err)
 
-            let friendlyMsg = ''
-            if (!error.response) {
-                friendlyMsg =
-                    `❌ Cannot reach the backend server.\n\n` +
-                    `URL tried: ${effectiveUrl}\n\n` +
-                    `Possible fixes:\n` +
-                    `• Run the backend: cd backend && python main.py\n` +
-                    `• Set NEXT_PUBLIC_API_URL in frontend/.env.local\n` +
-                    `• Check CORS — your Render/frontend URL must be in backend ALLOWED_ORIGINS`
-            } else if (error.response.status === 401 || error.response.status === 403) {
-                friendlyMsg =
-                    `❌ Authentication Failed (${error.response.status})\n\n` +
-                    `The API key sent by the frontend does not match the backend.\n` +
-                    `Frontend key: ${API_KEY}\n` +
-                    `Fix: ensure NEXT_PUBLIC_API_KEY or the hardcoded key in ScanForm.tsx matches backend/.env API_KEY`
-            } else if (error.response.status === 429) {
-                friendlyMsg = `⏱️ Rate Limit Exceeded\n\nToo many requests. Please wait a minute and try again.`
-            } else if (error.response.status === 400) {
-                friendlyMsg = `❌ Bad Request\n\n${error.response.data?.detail || 'Invalid target or scan parameters.'}`
+            if (!err.response) {
+                setError(`Cannot reach the backend at ${effectiveUrl}. Make sure it's running.`)
+            } else if (err.response.status === 401 || err.response.status === 403) {
+                setError(`Authentication failed (${err.response.status}). API key mismatch.`)
+            } else if (err.response.status === 429) {
+                setError('Rate limit exceeded. Please wait a minute.')
+            } else if (err.response.status === 400) {
+                setError(err.response.data?.detail || 'Invalid target or scan parameters.')
             } else {
-                friendlyMsg =
-                    `❌ Scan Failed (HTTP ${error.response.status})\n\n` +
-                    `${error.response.data?.detail || error.message}`
+                setError(err.response.data?.detail || err.message)
             }
-
-            alert(friendlyMsg)
             onError()
         } finally {
             setLoading(false)
@@ -134,12 +98,28 @@ export default function ScanForm({ onScanInitiated, onError, overrideApiUrl }: S
     }
 
     const scanTypes = [
-        { value: 'domain', label: 'Domain', icon: FaGlobe, description: 'WHOIS, DNS, Subdomains, Tech Stack' },
-        { value: 'email', label: 'Email', icon: FaEnvelope, description: 'MX Records, Breach Check, Validation' },
-        { value: 'username', label: 'Username', icon: FaUser, description: 'Platform Search, GitHub Profile' },
-        { value: 'phone', label: 'Phone', icon: FaPhone, description: 'Carrier, Location, Line Type' },
-        { value: 'full', label: 'Full Scan', icon: FaSearch, description: 'All Modules (Slower)' },
+        { value: 'domain', label: 'Domain', icon: FaGlobe, description: 'WHOIS, DNS, Subdomains' },
+        { value: 'email', label: 'Email', icon: FaEnvelope, description: 'MX, Breaches, Validation' },
+        { value: 'username', label: 'Username', icon: FaUser, description: 'Platform Search' },
+        { value: 'phone', label: 'Phone', icon: FaPhone, description: 'Carrier, Location' },
+        { value: 'full', label: 'Full Scan', icon: FaSearch, description: 'All Modules' },
     ]
+
+    const placeholders: Record<string, string> = {
+        domain: 'example.com',
+        email: 'user@example.com',
+        username: 'johndoe',
+        phone: '+1234567890',
+        full: 'example.com',
+    }
+
+    const targetLabels: Record<string, string> = {
+        domain: '(Domain)',
+        email: '(Email Address)',
+        username: '(Username)',
+        phone: '(Phone Number)',
+        full: '(Domain)',
+    }
 
     return (
         <motion.div
@@ -147,34 +127,36 @@ export default function ScanForm({ onScanInitiated, onError, overrideApiUrl }: S
             animate={{ opacity: 1, y: 0 }}
             className="max-w-4xl mx-auto"
         >
-            <div className="p-8 bg-cyber-dark border border-cyber-cyan rounded-lg neon-border scanline">
-                <h2 className="text-2xl font-bold text-cyber-cyan mb-6 flex items-center">
-                    <FaSearch className="mr-3" />
-                    INITIATE RECONNAISSANCE SCAN
+            <div className="glass p-8">
+                <h2 className="text-lg font-bold text-cyber-cyan mb-6 flex items-center gap-3 tracking-wider uppercase">
+                    <div className="w-8 h-8 rounded-lg bg-cyber-cyan/10 flex items-center justify-center">
+                        <FaSearch className="text-sm" />
+                    </div>
+                    Initiate Reconnaissance
                 </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Scan Type Selection */}
                     <div>
-                        <label className="block text-cyber-green text-sm font-semibold mb-3">
-                            SELECT SCAN TYPE
+                        <label className="block text-[10px] text-gray-500 font-semibold mb-3 uppercase tracking-widest">
+                            Select Scan Type
                         </label>
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                             {scanTypes.map((type) => (
                                 <button
                                     key={type.value}
                                     type="button"
-                                    onClick={() => setScanType(type.value as any)}
-                                    className={`p-4 rounded-lg border-2 transition-all duration-300 text-left ${scanType === type.value
-                                        ? 'border-cyber-cyan bg-cyber-cyan bg-opacity-20 neon-border'
-                                        : 'border-gray-600 hover:border-cyber-cyan hover:border-opacity-50'
+                                    onClick={() => { setScanType(type.value as any); setError('') }}
+                                    className={`p-3 rounded-xl border transition-all duration-300 text-left group ${scanType === type.value
+                                        ? 'border-cyber-cyan/40 bg-cyber-cyan/5 glow-cyan'
+                                        : 'border-white/[0.06] hover:border-white/[0.12] bg-white/[0.02] hover:bg-white/[0.04]'
                                         }`}
                                 >
-                                    <type.icon className={`text-2xl mb-2 ${scanType === type.value ? 'text-cyber-cyan' : 'text-gray-400'}`} />
-                                    <div className={`font-bold mb-1 ${scanType === type.value ? 'text-cyber-cyan' : 'text-gray-300'}`}>
+                                    <type.icon className={`text-lg mb-2 ${scanType === type.value ? 'text-cyber-cyan' : 'text-gray-600 group-hover:text-gray-400'} transition-colors`} />
+                                    <div className={`text-xs font-bold mb-0.5 ${scanType === type.value ? 'text-cyber-cyan' : 'text-gray-400'}`}>
                                         {type.label}
                                     </div>
-                                    <div className="text-xs text-gray-500">{type.description}</div>
+                                    <div className="text-[10px] text-gray-600">{type.description}</div>
                                 </button>
                             ))}
                         </div>
@@ -182,87 +164,82 @@ export default function ScanForm({ onScanInitiated, onError, overrideApiUrl }: S
 
                     {/* Target Input */}
                     <div>
-                        <label className="block text-cyber-green text-sm font-semibold mb-2">
-                            TARGET {scanType === 'domain' && '(Domain)'}
-                            {scanType === 'email' && '(Email Address)'}
-                            {scanType === 'username' && '(Username)'}
-                            {scanType === 'phone' && '(Phone Number)'}
+                        <label className="block text-[10px] text-gray-500 font-semibold mb-2 uppercase tracking-widest">
+                            Target {targetLabels[scanType]}
                         </label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                value={target}
-                                onChange={(e) => setTarget(e.target.value)}
-                                placeholder={
-                                    scanType === 'domain' ? 'example.com' :
-                                        scanType === 'email' ? 'user@example.com' :
-                                            scanType === 'username' ? 'johndoe' :
-                                                scanType === 'phone' ? '+1234567890' :
-                                                    'example.com'
-                                }
-                                className="w-full px-4 py-3 bg-black bg-opacity-60 border border-cyber-cyan border-opacity-50 rounded-lg text-cyber-green placeholder-gray-500 focus:outline-none focus:border-cyber-cyan focus:border-opacity-100 transition-all terminal"
-                                required
-                            />
-                        </div>
-                        <p className="mt-2 text-xs text-gray-500">
+                        <input
+                            type="text"
+                            value={target}
+                            onChange={(e) => { setTarget(e.target.value); setError('') }}
+                            placeholder={placeholders[scanType]}
+                            className="w-full px-4 py-3.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-cyber-green placeholder-gray-600 focus:outline-none focus:border-cyber-cyan/40 focus:ring-1 focus:ring-cyber-cyan/20 transition-all font-mono text-sm"
+                            required
+                        />
+                        <p className="mt-2 text-[10px] text-gray-600">
                             ⚠️ Ensure you have permission to scan this target
                         </p>
                     </div>
 
                     {/* Deep Scan Option */}
-                    <div className="flex items-center space-x-3 p-4 bg-black bg-opacity-40 rounded-lg border border-gray-700">
+                    <label htmlFor="deepScan" className="flex items-center gap-3 p-4 bg-white/[0.02] rounded-xl border border-white/[0.06] cursor-pointer hover:bg-white/[0.04] transition-all">
                         <input
                             type="checkbox"
                             id="deepScan"
                             checked={deepScan}
                             onChange={(e) => setDeepScan(e.target.checked)}
-                            className="w-5 h-5 accent-cyber-cyan"
+                            className="w-4 h-4 accent-cyber-cyan rounded"
                         />
-                        <label htmlFor="deepScan" className="text-gray-300 text-sm cursor-pointer">
-                            <span className="font-semibold text-cyber-cyan">Enable Deep Scan</span>
-                            <span className="block text-xs text-gray-500 mt-1">
-                                More thorough analysis (slower, more API calls)
+                        <div>
+                            <span className="text-xs font-semibold text-cyber-cyan">Enable Deep Scan</span>
+                            <span className="block text-[10px] text-gray-600 mt-0.5">
+                                More thorough analysis — slower, more API calls
                             </span>
-                        </label>
-                    </div>
+                        </div>
+                    </label>
+
+                    {/* Error Message */}
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: -8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-start gap-2 p-3 bg-cyber-red/5 border border-cyber-red/20 rounded-xl text-cyber-red text-xs"
+                        >
+                            <FaExclamationCircle className="mt-0.5 shrink-0" />
+                            <span>{error}</span>
+                        </motion.div>
+                    )}
 
                     {/* Submit Button */}
                     <motion.button
                         type="submit"
                         disabled={loading}
-                        whileHover={{ scale: loading ? 1 : 1.02 }}
-                        whileTap={{ scale: loading ? 1 : 0.98 }}
-                        className={`w-full py-4 rounded-lg font-bold text-lg transition-all duration-300 ${loading
-                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                            : 'bg-cyber-cyan text-cyber-dark hover:bg-opacity-90 neon-border'
+                        whileHover={{ scale: loading ? 1 : 1.01 }}
+                        whileTap={{ scale: loading ? 1 : 0.99 }}
+                        className={`w-full py-4 rounded-xl font-bold text-sm tracking-wider uppercase transition-all duration-300 ${loading
+                            ? 'bg-gray-800 text-gray-500 cursor-not-allowed border border-white/[0.06]'
+                            : 'bg-gradient-to-r from-cyber-cyan to-cyan-400 text-cyber-dark hover:brightness-110 glow-cyan'
                             }`}
                     >
                         {loading ? (
-                            <span className="flex items-center justify-center">
-                                <div className="w-5 h-5 border-2 border-cyber-dark border-t-transparent rounded-full animate-spin mr-3"></div>
-                                INITIALIZING SCAN...
+                            <span className="flex items-center justify-center gap-3">
+                                <div className="w-4 h-4 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+                                Initializing Scan…
                             </span>
                         ) : (
-                            <span className="flex items-center justify-center">
-                                <FaSearch className="mr-3" />
-                                INITIATE SCAN
+                            <span className="flex items-center justify-center gap-2">
+                                <FaBolt />
+                                Initiate Scan
                             </span>
                         )}
                     </motion.button>
                 </form>
 
-                {/* Info */}
-                <div className="mt-6 pt-6 border-t border-gray-700">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-gray-500">
-                        <div>
-                            <span className="text-cyber-green">✓</span> Free Public APIs
-                        </div>
-                        <div>
-                            <span className="text-cyber-green">✓</span> No Login Required
-                        </div>
-                        <div>
-                            <span className="text-cyber-green">✓</span> Ethical OSINT Only
-                        </div>
+                {/* Info Footer */}
+                <div className="mt-6 pt-5 border-t border-white/[0.04]">
+                    <div className="flex flex-wrap justify-center gap-6 text-[10px] text-gray-600">
+                        <span><span className="text-cyber-green">✓</span> Free Public APIs</span>
+                        <span><span className="text-cyber-green">✓</span> No Login Required</span>
+                        <span><span className="text-cyber-green">✓</span> Ethical OSINT Only</span>
                     </div>
                 </div>
             </div>

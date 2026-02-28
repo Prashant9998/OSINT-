@@ -1,9 +1,23 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { Inter, JetBrains_Mono } from 'next/font/google'
+
+const inter = Inter({
+    subsets: ['latin'],
+    variable: '--font-inter',
+    display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+    subsets: ['latin'],
+    variable: '--font-mono',
+    display: 'swap',
+})
 
 export const metadata: Metadata = {
-    title: 'OSINT Reconnaissance Platform',
-    description: 'Professional OSINT Information Gathering Platform for Ethical Hacking',
+    title: 'OSINT Recon — Intelligence Gathering Platform',
+    description: 'Professional OSINT Information Gathering Platform for Ethical Hacking & Security Research. Passive reconnaissance using public data sources.',
+    keywords: ['OSINT', 'reconnaissance', 'security', 'ethical hacking', 'information gathering'],
 }
 
 export default function RootLayout({
@@ -12,11 +26,8 @@ export default function RootLayout({
     children: React.ReactNode
 }) {
     return (
-        <html lang="en">
-            <head>
-                <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet" />
-            </head>
-            <body className="min-h-screen">{children}</body>
+        <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+            <body className="min-h-screen antialiased">{children}</body>
         </html>
     )
 }
