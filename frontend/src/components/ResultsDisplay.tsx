@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
     FaShieldAlt, FaExclamationTriangle, FaCheckCircle, FaGlobe,
     FaServer, FaGithub, FaEnvelope, FaUser, FaDownload, FaRedo,
-    FaSearch, FaPhone, FaBolt, FaChevronDown, FaChevronUp, FaFileAlt
+    FaSearch, FaPhone, FaBolt, FaChevronDown, FaFileAlt,
+    FaExternalLinkAlt, FaLock, FaFingerprint
 } from 'react-icons/fa'
 import { API_KEY, getEffectiveApiUrl } from '../lib/api'
 
@@ -15,39 +16,35 @@ interface ResultsDisplayProps {
     overrideApiUrl?: string
 }
 
-function AccordionSection({
-    title,
-    icon: Icon,
-    iconColor,
-    borderColor,
-    children,
-    defaultOpen = false,
+function Section({
+    title, icon: Icon, gradient, children, defaultOpen = false, count,
 }: {
-    title: string
-    icon: React.ComponentType<any>
-    iconColor: string
-    borderColor: string
-    children: React.ReactNode
-    defaultOpen?: boolean
+    title: string; icon: React.ComponentType<any>; gradient: string
+    children: React.ReactNode; defaultOpen?: boolean; count?: number
 }) {
     const [open, setOpen] = useState(defaultOpen)
     return (
         <motion.div
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className={`glass-sm ${borderColor} overflow-hidden`}
+            className="glass-sm overflow-hidden"
         >
             <button
                 onClick={() => setOpen(o => !o)}
-                className="w-full flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors"
+                className="w-full flex items-center justify-between p-5 hover:bg-white/[0.01] transition-all duration-300 group"
             >
                 <div className="flex items-center gap-3">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${iconColor.replace('text-', 'bg-')}/10`}>
-                        <Icon className={`text-sm ${iconColor}`} />
+                    <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg`}>
+                        <Icon className="text-white text-xs" />
                     </div>
-                    <h3 className={`text-sm font-bold uppercase tracking-wider ${iconColor}`}>{title}</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-white/70 group-hover:text-white/90 transition-colors">{title}</h3>
+                    {count !== undefined && (
+                        <span className="tag text-white/30">{count}</span>
+                    )}
                 </div>
-                {open ? <FaChevronUp className="text-gray-600 text-xs" /> : <FaChevronDown className="text-gray-600 text-xs" />}
+                <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                    <FaChevronDown className="text-white/15 text-[10px]" />
+                </motion.div>
             </button>
             <AnimatePresence>
                 {open && (
@@ -55,10 +52,10 @@ function AccordionSection({
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                         className="overflow-hidden"
                     >
-                        <div className="px-5 pb-5 border-t border-white/[0.04]">
+                        <div className="px-5 pb-5 border-t border-white/[0.03]">
                             {children}
                         </div>
                     </motion.div>
@@ -68,33 +65,28 @@ function AccordionSection({
     )
 }
 
+function DataRow({ label, value, color }: { label: string; value: React.ReactNode; color?: string }) {
+    return (
+        <div className="flex items-center justify-between py-2 border-b border-white/[0.02] last:border-0">
+            <span className="text-white/25 text-[11px]">{label}</span>
+            <span className={`text-[11px] font-medium ${color || 'text-white/70'}`}>{value}</span>
+        </div>
+    )
+}
+
 export default function ResultsDisplay({ results, onNewScan, overrideApiUrl }: ResultsDisplayProps) {
     const apiUrl = (overrideApiUrl || getEffectiveApiUrl()).replace(/\/$/, '')
 
-    const riskColors: Record<string, string> = {
-        low: 'text-cyber-green',
-        medium: 'text-cyber-yellow',
-        high: 'text-cyber-red',
-        critical: 'text-cyber-red',
-    }
-
-    const riskBg: Record<string, string> = {
-        low: 'bg-cyber-green',
-        medium: 'bg-cyber-yellow',
-        high: 'bg-cyber-red',
-        critical: 'bg-cyber-red',
-    }
-
-    const riskIcons: Record<string, React.ComponentType<any>> = {
-        low: FaCheckCircle,
-        medium: FaExclamationTriangle,
-        high: FaExclamationTriangle,
-        critical: FaShieldAlt,
-    }
-
     const riskLevel = results.correlated_intel?.risk_level || 'low'
     const riskScore = results.correlated_intel?.risk_score || 0
-    const RiskIcon = riskIcons[riskLevel] || FaCheckCircle
+
+    const riskConfig: Record<string, { gradient: string; text: string; glow: string }> = {
+        low: { gradient: 'from-green-400 to-emerald-500', text: 'text-cyber-green', glow: 'shadow-[0_0_30px_rgba(0,255,65,0.1)]' },
+        medium: { gradient: 'from-amber-400 to-orange-500', text: 'text-cyber-yellow', glow: 'shadow-[0_0_30px_rgba(255,215,0,0.1)]' },
+        high: { gradient: 'from-rose-400 to-red-500', text: 'text-cyber-red', glow: 'shadow-[0_0_30px_rgba(255,0,85,0.1)]' },
+        critical: { gradient: 'from-red-500 to-red-700', text: 'text-cyber-red', glow: 'shadow-[0_0_30px_rgba(255,0,85,0.15)]' },
+    }
+    const rc = riskConfig[riskLevel] || riskConfig.low
 
     const handleDownload = () => {
         const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' })
@@ -108,11 +100,11 @@ export default function ResultsDisplay({ results, onNewScan, overrideApiUrl }: R
 
     const handleDownloadReport = async () => {
         try {
-            const response = await fetch(`${apiUrl}/api/v1/scan/${results.scan_id}/report`, {
-                headers: { 'X-API-Key': API_KEY }
+            const res = await fetch(`${apiUrl}/api/v1/scan/${results.scan_id}/report`, {
+                headers: { 'X-API-Key': API_KEY },
             })
-            if (!response.ok) throw new Error('Report generation failed')
-            const blob = await response.blob()
+            if (!res.ok) throw new Error('Report generation failed')
+            const blob = await res.blob()
             const url = window.URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
@@ -121,44 +113,26 @@ export default function ResultsDisplay({ results, onNewScan, overrideApiUrl }: R
             a.click()
             window.URL.revokeObjectURL(url)
             document.body.removeChild(a)
-        } catch (error) {
-            console.error('Download failed:', error)
-            alert('Failed to download report. Please try again.')
+        } catch (err) {
+            console.error('Download failed:', err)
         }
     }
 
     return (
-        <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="max-w-6xl mx-auto space-y-4"
-        >
-            {/* Header */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-5xl mx-auto space-y-4">
+
+            {/* Header Row */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 className="text-xl font-bold text-gradient-cyan tracking-wider uppercase">
-                    Scan Results
-                </h2>
+                <h2 className="text-xl font-bold text-glow tracking-wider">SCAN RESULTS</h2>
                 <div className="flex flex-wrap gap-2">
-                    <button
-                        onClick={handleDownloadReport}
-                        className="flex items-center gap-2 px-4 py-2 bg-cyber-green/10 border border-cyber-green/20 text-cyber-green text-xs font-bold rounded-xl hover:bg-cyber-green/15 transition-all"
-                    >
-                        <FaFileAlt className="text-[10px]" />
-                        PDF Report
+                    <button onClick={handleDownloadReport} className="btn-ghost !border-cyber-green/15 !text-cyber-green/60 hover:!bg-cyber-green/[0.04]">
+                        <FaFileAlt className="inline mr-1.5 text-[10px]" />PDF
                     </button>
-                    <button
-                        onClick={handleDownload}
-                        className="flex items-center gap-2 px-4 py-2 bg-cyber-purple/10 border border-cyber-purple/20 text-cyber-purple text-xs font-bold rounded-xl hover:bg-cyber-purple/15 transition-all"
-                    >
-                        <FaDownload className="text-[10px]" />
-                        Export JSON
+                    <button onClick={handleDownload} className="btn-ghost !border-cyber-purple/15 !text-cyber-purple/60 hover:!bg-cyber-purple/[0.04]">
+                        <FaDownload className="inline mr-1.5 text-[10px]" />JSON
                     </button>
-                    <button
-                        onClick={onNewScan}
-                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyber-cyan to-cyan-400 text-cyber-dark text-xs font-bold rounded-xl hover:brightness-110 transition-all glow-cyan"
-                    >
-                        <FaRedo className="text-[10px]" />
-                        New Scan
+                    <button onClick={onNewScan} className="btn-primary !py-2.5 !px-5 !text-xs">
+                        <FaRedo className="inline mr-1.5" />New Scan
                     </button>
                 </div>
             </div>
@@ -167,395 +141,301 @@ export default function ResultsDisplay({ results, onNewScan, overrideApiUrl }: R
             <motion.div
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="glass p-6"
+                className={`glass shimmer-border p-6 ${rc.glow}`}
             >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-xl ${riskBg[riskLevel]}/10 flex items-center justify-center`}>
-                            <RiskIcon className={`text-2xl ${riskColors[riskLevel]}`} />
-                        </div>
-                        <div>
-                            <h3 className={`text-xl font-bold uppercase ${riskColors[riskLevel]}`}>
-                                {riskLevel} Risk
-                            </h3>
-                            <div className="flex items-center gap-3 mt-1">
-                                <div className="w-24 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
-                                    <div className={`h-full ${riskBg[riskLevel]}/80 rounded-full`} style={{ width: `${riskScore}%` }} />
-                                </div>
-                                <span className={`text-xs font-mono font-bold ${riskColors[riskLevel]}`}>{riskScore}/100</span>
+                    <div className="flex items-center gap-5">
+                        {/* Risk Gauge */}
+                        <div className="relative w-20 h-20">
+                            <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
+                                <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="6" />
+                                <circle
+                                    cx="40" cy="40" r="34" fill="none"
+                                    stroke="url(#riskGradient)" strokeWidth="6"
+                                    strokeLinecap="round"
+                                    strokeDasharray={`${(riskScore / 100) * 213.6} 213.6`}
+                                    className="transition-all duration-1000"
+                                />
+                                <defs>
+                                    <linearGradient id="riskGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" stopColor={riskLevel === 'low' ? '#00ff41' : riskLevel === 'medium' ? '#ffd700' : '#ff0055'} />
+                                        <stop offset="100%" stopColor={riskLevel === 'low' ? '#10b981' : riskLevel === 'medium' ? '#f59e0b' : '#ef4444'} />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className={`text-lg font-bold font-mono ${rc.text}`}>{riskScore}</span>
+                                <span className="text-[8px] text-white/20 uppercase">/ 100</span>
                             </div>
                         </div>
+
+                        <div>
+                            <h3 className={`text-lg font-bold uppercase tracking-wider ${rc.text}`}>
+                                {riskLevel} Risk
+                            </h3>
+                            <p className="text-white/25 text-[11px] mt-1">
+                                {results.modules_executed?.length || 0} modules · {results.total_execution_time?.toFixed(1)}s
+                            </p>
+                        </div>
                     </div>
+
                     <div className="text-right">
-                        <p className="text-[10px] text-gray-600 uppercase tracking-widest">Target</p>
-                        <p className="text-lg font-bold text-cyber-cyan font-mono">{results.target}</p>
-                        <p className="text-[10px] text-gray-600 mt-1">
-                            {results.total_execution_time?.toFixed(2)}s · {results.modules_executed?.length || 0} modules
-                        </p>
+                        <p className="text-[9px] text-white/15 uppercase tracking-[0.2em]">Target</p>
+                        <p className="text-lg font-bold text-gradient-cyan font-mono">{results.target}</p>
                     </div>
                 </div>
             </motion.div>
 
             {/* Key Findings */}
             {results.correlated_intel?.key_findings?.length > 0 && (
-                <AccordionSection
-                    title="Key Findings"
-                    icon={FaShieldAlt}
-                    iconColor="text-cyber-cyan"
-                    borderColor="border-cyber-cyan/15"
-                    defaultOpen={true}
-                >
-                    <ul className="space-y-2 mt-4">
-                        {results.correlated_intel.key_findings.map((finding: string, idx: number) => (
-                            <li key={idx} className="text-gray-300 text-xs flex items-start gap-2">
-                                <span className="text-cyber-green mt-0.5">▸</span>
-                                <span>{finding}</span>
+                <Section title="Key Findings" icon={FaShieldAlt} gradient="from-cyan-400 to-blue-500" defaultOpen count={results.correlated_intel.key_findings.length}>
+                    <ul className="space-y-2.5 mt-4">
+                        {results.correlated_intel.key_findings.map((f: string, i: number) => (
+                            <li key={i} className="flex items-start gap-2.5 text-[11px] text-white/50">
+                                <span className="text-cyber-cyan/50 mt-0.5 text-[10px]">▸</span>
+                                <span>{f}</span>
                             </li>
                         ))}
                     </ul>
-                </AccordionSection>
+                </Section>
             )}
 
-            {/* Phone Intelligence */}
+            {/* Phone Intel */}
             {results.phone_intel && (
-                <AccordionSection
-                    title="Phone Intelligence"
-                    icon={FaPhone}
-                    iconColor="text-cyber-blue"
-                    borderColor="border-cyber-blue/15"
-                    defaultOpen={true}
-                >
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                        <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Number</p>
-                            <p className="text-base font-bold text-white font-mono">{results.phone_intel.international_number || results.phone_intel.phone}</p>
+                <Section title="Phone Intelligence" icon={FaPhone} gradient="from-green-400 to-emerald-500" defaultOpen>
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                        <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                            <p className="text-[9px] text-white/15 uppercase tracking-[0.2em] mb-1">Number</p>
+                            <p className="text-sm font-bold text-white/80 font-mono">{results.phone_intel.international_number || results.phone_intel.phone}</p>
                         </div>
-                        <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <p className="text-[10px] text-gray-600 uppercase tracking-widest mb-1">Status</p>
-                            <p className={`text-base font-bold ${results.phone_intel.valid ? 'text-cyber-green' : 'text-cyber-red'}`}>
+                        <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                            <p className="text-[9px] text-white/15 uppercase tracking-[0.2em] mb-1">Status</p>
+                            <p className={`text-sm font-bold ${results.phone_intel.valid ? 'text-cyber-green' : 'text-cyber-red'}`}>
                                 {results.phone_intel.valid ? '✓ Valid' : '✗ Invalid'}
                             </p>
                         </div>
                     </div>
                     {(results.phone_intel.carrier || results.phone_intel.country) && (
-                        <div className="mt-3 p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <ul className="space-y-1.5 text-xs text-gray-400">
-                                {results.phone_intel.carrier && (
-                                    <li className="flex justify-between"><span>Carrier:</span><span className="text-white">{results.phone_intel.carrier}</span></li>
-                                )}
-                                {results.phone_intel.line_type && (
-                                    <li className="flex justify-between"><span>Line Type:</span><span className="text-white">{results.phone_intel.line_type}</span></li>
-                                )}
-                                {results.phone_intel.country && (
-                                    <li className="flex justify-between"><span>Country:</span><span className="text-white">{results.phone_intel.country} ({results.phone_intel.country_code})</span></li>
-                                )}
-                                {results.phone_intel.location && (
-                                    <li className="flex justify-between"><span>Location:</span><span className="text-white">{results.phone_intel.location}</span></li>
-                                )}
-                            </ul>
+                        <div className="mt-3 bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                            {results.phone_intel.carrier && <DataRow label="Carrier" value={results.phone_intel.carrier} />}
+                            {results.phone_intel.line_type && <DataRow label="Line Type" value={results.phone_intel.line_type} />}
+                            {results.phone_intel.country && <DataRow label="Country" value={`${results.phone_intel.country} (${results.phone_intel.country_code})`} />}
+                            {results.phone_intel.location && <DataRow label="Location" value={results.phone_intel.location} />}
                         </div>
                     )}
-                </AccordionSection>
+                </Section>
             )}
 
-            {/* Domain Intelligence */}
+            {/* Domain Intel */}
             {results.domain_intel && (
-                <AccordionSection
-                    title="Domain Intelligence"
-                    icon={FaGlobe}
-                    iconColor="text-cyber-cyan"
-                    borderColor="border-cyber-cyan/15"
-                    defaultOpen={true}
-                >
+                <Section title="Domain Intelligence" icon={FaGlobe} gradient="from-cyan-400 to-blue-500" defaultOpen count={results.domain_intel.subdomain_count}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                         {results.domain_intel.whois_data && (
-                            <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                                <h4 className="text-cyber-green text-xs font-semibold mb-3 uppercase tracking-wider">WHOIS Information</h4>
-                                <div className="space-y-2 text-xs">
-                                    {results.domain_intel.whois_data.registrar && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Registrar:</span>
-                                            <span className="text-white">{results.domain_intel.whois_data.registrar}</span>
-                                        </div>
-                                    )}
-                                    {results.domain_intel.whois_data.domain_age_days && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Age:</span>
-                                            <span className="text-white">{Math.floor(results.domain_intel.whois_data.domain_age_days / 365)} years</span>
-                                        </div>
-                                    )}
-                                    {results.domain_intel.whois_data.registrant_country && (
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">Country:</span>
-                                            <span className="text-white">{results.domain_intel.whois_data.registrant_country}</span>
-                                        </div>
-                                    )}
-                                </div>
+                            <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                                <h4 className="text-[10px] text-cyber-cyan/50 font-bold uppercase tracking-wider mb-3">WHOIS</h4>
+                                {results.domain_intel.whois_data.registrar && <DataRow label="Registrar" value={results.domain_intel.whois_data.registrar} />}
+                                {results.domain_intel.whois_data.domain_age_days && <DataRow label="Age" value={`${Math.floor(results.domain_intel.whois_data.domain_age_days / 365)}y`} />}
+                                {results.domain_intel.whois_data.registrant_country && <DataRow label="Country" value={results.domain_intel.whois_data.registrant_country} />}
                             </div>
                         )}
-                        <div className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <h4 className="text-cyber-green text-xs font-semibold mb-3 uppercase tracking-wider">Subdomains ({results.domain_intel.subdomain_count})</h4>
-                            <div className="max-h-40 overflow-y-auto space-y-1 text-xs">
-                                {results.domain_intel.subdomains?.slice(0, 10).map((sub: any, idx: number) => (
-                                    <div key={idx} className="text-cyber-cyan font-mono text-[10px]">
-                                        • {sub.subdomain}
-                                    </div>
+                        <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                            <h4 className="text-[10px] text-cyber-cyan/50 font-bold uppercase tracking-wider mb-3">Subdomains</h4>
+                            <div className="max-h-32 overflow-y-auto space-y-1">
+                                {results.domain_intel.subdomains?.slice(0, 8).map((s: any, i: number) => (
+                                    <p key={i} className="text-[10px] text-white/40 font-mono">• {s.subdomain}</p>
                                 ))}
-                                {results.domain_intel.subdomain_count > 10 && (
-                                    <div className="text-gray-600 text-[10px] mt-2">
-                                        + {results.domain_intel.subdomain_count - 10} more
-                                    </div>
+                                {results.domain_intel.subdomain_count > 8 && (
+                                    <p className="text-[10px] text-white/15 mt-1">+ {results.domain_intel.subdomain_count - 8} more</p>
                                 )}
                             </div>
                         </div>
                     </div>
-                    {results.domain_intel.insights?.length > 0 && (
-                        <div className="mt-3 p-3 bg-cyber-cyan/[0.03] rounded-xl border border-cyber-cyan/10">
-                            <h4 className="text-cyber-cyan text-[10px] font-semibold mb-2 uppercase tracking-wider">Security Insights</h4>
-                            <ul className="space-y-1 text-[10px]">
-                                {results.domain_intel.insights.map((insight: string, idx: number) => (
-                                    <li key={idx} className="text-gray-400">• {insight}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
-                </AccordionSection>
+                </Section>
             )}
 
             {/* Tech Stack */}
             {results.tech_stack && (
-                <AccordionSection
-                    title="Technology Stack"
-                    icon={FaServer}
-                    iconColor="text-cyber-purple"
-                    borderColor="border-cyber-purple/15"
-                >
+                <Section title="Technology Stack" icon={FaFingerprint} gradient="from-purple-400 to-violet-500">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
                         {results.tech_stack.web_server && (
-                            <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                                <h4 className="text-cyber-purple text-[10px] font-semibold mb-1 uppercase">Web Server</h4>
-                                <p className="text-white text-sm">{results.tech_stack.web_server}</p>
+                            <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                                <p className="text-[9px] text-white/15 uppercase tracking-wider mb-1">Server</p>
+                                <p className="text-sm text-white/70">{results.tech_stack.web_server}</p>
                             </div>
                         )}
                         {results.tech_stack.cdn && (
-                            <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                                <h4 className="text-cyber-purple text-[10px] font-semibold mb-1 uppercase">CDN</h4>
-                                <p className="text-white text-sm">{results.tech_stack.cdn}</p>
+                            <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                                <p className="text-[9px] text-white/15 uppercase tracking-wider mb-1">CDN</p>
+                                <p className="text-sm text-white/70">{results.tech_stack.cdn}</p>
                             </div>
                         )}
-                        <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <h4 className="text-cyber-purple text-[10px] font-semibold mb-2 uppercase">Security Headers</h4>
-                            <div className="space-y-1 text-[10px]">
-                                {Object.entries(results.tech_stack.security_headers || {}).map(([header, present]: any, idx) => (
-                                    <div key={idx} className="flex items-center justify-between">
-                                        <span className="text-gray-500">{header}</span>
-                                        <span className={present ? 'text-cyber-green' : 'text-cyber-red'}>
-                                            {present ? '✓' : '✗'}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
+                        <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mb-2">Security Headers</p>
+                            {Object.entries(results.tech_stack.security_headers || {}).map(([h, v]: any, i) => (
+                                <div key={i} className="flex items-center justify-between py-1">
+                                    <span className="text-[10px] text-white/25 truncate mr-2">{h}</span>
+                                    <span className={v ? 'text-cyber-green text-[10px]' : 'text-cyber-red text-[10px]'}>{v ? '✓' : '✗'}</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                     {results.tech_stack.technologies?.length > 0 && (
                         <div className="mt-3">
-                            <h4 className="text-cyber-purple text-[10px] font-semibold mb-2 uppercase tracking-wider">Detected Technologies</h4>
-                            <div className="flex flex-wrap gap-2">
-                                {results.tech_stack.technologies.map((tech: any, idx: number) => (
-                                    <span key={idx} className="px-2.5 py-1 bg-cyber-purple/10 border border-cyber-purple/20 rounded-lg text-[10px] text-cyber-purple font-medium">
-                                        {tech.name} {tech.version && `v${tech.version}`}
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mb-2">Technologies</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {results.tech_stack.technologies.map((t: any, i: number) => (
+                                    <span key={i} className="tag !bg-cyber-purple/[0.06] !border-cyber-purple/10 text-cyber-purple/60">
+                                        {t.name} {t.version && `v${t.version}`}
                                     </span>
                                 ))}
                             </div>
                         </div>
                     )}
-                </AccordionSection>
+                </Section>
             )}
 
-            {/* GitHub Intelligence */}
+            {/* GitHub */}
             {results.github_intel && results.github_intel.total_repos_found > 0 && (
-                <AccordionSection
-                    title="GitHub OSINT"
-                    icon={FaGithub}
-                    iconColor="text-white"
-                    borderColor="border-gray-600/30"
-                >
+                <Section title="GitHub OSINT" icon={FaGithub} gradient="from-gray-400 to-gray-600" count={results.github_intel.total_repos_found}>
                     <div className="grid grid-cols-2 gap-3 mt-4 mb-4">
-                        <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <p className="text-[10px] text-gray-600 uppercase">Repos Found</p>
-                            <p className="text-xl font-bold text-white">{results.github_intel.total_repos_found}</p>
+                        <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03] text-center">
+                            <p className="text-2xl font-bold text-white/80 font-mono">{results.github_intel.total_repos_found}</p>
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mt-1">Repos</p>
                         </div>
-                        <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <p className="text-[10px] text-gray-600 uppercase">High-Risk</p>
-                            <p className={`text-xl font-bold ${results.github_intel.high_risk_findings > 0 ? 'text-cyber-red' : 'text-cyber-green'}`}>
+                        <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03] text-center">
+                            <p className={`text-2xl font-bold font-mono ${results.github_intel.high_risk_findings > 0 ? 'text-cyber-red' : 'text-cyber-green'}`}>
                                 {results.github_intel.high_risk_findings}
                             </p>
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mt-1">High-Risk</p>
                         </div>
                     </div>
                     {results.github_intel.findings?.length > 0 && (
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {results.github_intel.findings.map((finding: any, idx: number) => (
-                                <div key={idx} className={`p-3 rounded-xl border ${finding.risk_level === 'high' || finding.risk_level === 'critical'
-                                        ? 'border-cyber-red/20 bg-cyber-red/[0.03]'
-                                        : 'border-white/[0.04] bg-white/[0.02]'
+                        <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {results.github_intel.findings.map((f: any, i: number) => (
+                                <div key={i} className={`p-3 rounded-xl border ${f.risk_level === 'high' || f.risk_level === 'critical'
+                                        ? 'border-cyber-red/10 bg-cyber-red/[0.02]'
+                                        : 'border-white/[0.03] bg-white/[0.01]'
                                     }`}>
-                                    <div className="flex items-start justify-between mb-1">
-                                        <span className="text-xs font-semibold text-white">{finding.repository}</span>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded-lg ${finding.risk_level === 'high' || finding.risk_level === 'critical'
-                                                ? 'bg-cyber-red/20 text-cyber-red'
-                                                : 'bg-white/[0.06] text-gray-400'
-                                            }`}>
-                                            {finding.risk_level?.toUpperCase()}
-                                        </span>
+                                    <div className="flex justify-between items-start mb-1">
+                                        <span className="text-[11px] font-semibold text-white/60">{f.repository}</span>
+                                        <span className={`tag !text-[8px] ${f.risk_level === 'high' || f.risk_level === 'critical'
+                                                ? '!bg-cyber-red/10 !border-cyber-red/15 text-cyber-red'
+                                                : ''
+                                            }`}>{f.risk_level}</span>
                                     </div>
-                                    <p className="text-[10px] text-gray-600 mb-1">{finding.file_path}</p>
-                                    <a href={finding.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyber-cyan hover:underline">
-                                        View on GitHub →
-                                    </a>
+                                    <p className="text-[10px] text-white/20 font-mono">{f.file_path}</p>
+                                    {f.url && (
+                                        <a href={f.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyber-cyan/40 hover:text-cyber-cyan transition-colors mt-1 inline-flex items-center gap-1">
+                                            View <FaExternalLinkAlt className="text-[8px]" />
+                                        </a>
+                                    )}
                                 </div>
                             ))}
                         </div>
                     )}
-                </AccordionSection>
+                </Section>
             )}
 
             {/* Shodan */}
             {results.shodan_data && (
-                <AccordionSection
-                    title="Shodan Infrastructure"
-                    icon={FaServer}
-                    iconColor="text-cyber-red"
-                    borderColor="border-cyber-red/15"
-                >
+                <Section title="Shodan Infrastructure" icon={FaServer} gradient="from-rose-400 to-red-500">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-                        <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <p className="text-[10px] text-gray-600 uppercase">IP Address</p>
-                            <p className="text-base font-bold text-white font-mono">{results.shodan_data.ip}</p>
-                            <p className="text-[10px] text-gray-600">{results.shodan_data.isp} — {results.shodan_data.country_name}</p>
+                        <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                            <DataRow label="IP" value={<span className="font-mono">{results.shodan_data.ip}</span>} />
+                            {results.shodan_data.isp && <DataRow label="ISP" value={results.shodan_data.isp} />}
+                            {results.shodan_data.country_name && <DataRow label="Country" value={results.shodan_data.country_name} />}
                         </div>
-                        <div className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04]">
-                            <p className="text-[10px] text-gray-600 uppercase mb-1">Open Ports</p>
-                            <div className="flex flex-wrap gap-1">
-                                {results.shodan_data.ports?.map((port: number, idx: number) => (
-                                    <span key={idx} className="px-2 py-0.5 bg-cyber-red/10 text-cyber-red rounded-lg text-[10px] border border-cyber-red/20 font-mono">
-                                        {port}
-                                    </span>
+                        <div className="bg-white/[0.015] rounded-xl p-4 border border-white/[0.03]">
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mb-2">Open Ports</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {results.shodan_data.ports?.map((p: number, i: number) => (
+                                    <span key={i} className="tag !bg-cyber-red/[0.06] !border-cyber-red/10 text-cyber-red/60 font-mono">{p}</span>
                                 ))}
                             </div>
                         </div>
                     </div>
                     {results.shodan_data.vulnerabilities?.length > 0 && (
                         <div className="mt-3">
-                            <h4 className="text-cyber-red text-[10px] font-semibold mb-2 uppercase">Vulnerabilities</h4>
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mb-2">Vulnerabilities</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {results.shodan_data.vulnerabilities.map((vuln: string, idx: number) => (
-                                    <span key={idx} className="px-2 py-0.5 bg-cyber-red/20 text-cyber-red rounded-lg text-[10px] font-bold font-mono">
-                                        {vuln}
-                                    </span>
+                                {results.shodan_data.vulnerabilities.map((v: string, i: number) => (
+                                    <span key={i} className="tag !bg-cyber-red/10 !border-cyber-red/15 text-cyber-red font-mono font-bold">{v}</span>
                                 ))}
                             </div>
                         </div>
                     )}
-                </AccordionSection>
+                </Section>
             )}
 
             {/* VirusTotal */}
             {results.virustotal_data && (
-                <AccordionSection
-                    title="VirusTotal Analysis"
-                    icon={FaShieldAlt}
-                    iconColor="text-cyber-blue"
-                    borderColor="border-cyber-blue/15"
-                >
-                    <div className="flex items-center justify-center gap-10 mt-4 py-4">
+                <Section title="VirusTotal Analysis" icon={FaLock} gradient="from-blue-400 to-indigo-500">
+                    <div className="flex items-center justify-center gap-10 mt-6 mb-2">
                         <div className="text-center">
                             <p className="text-3xl font-bold text-cyber-red font-mono">{results.virustotal_data.malicious_count}</p>
-                            <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-1">Malicious</p>
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mt-1">Malicious</p>
                         </div>
-                        <div className="w-px h-12 bg-white/[0.06]" />
+                        <div className="w-px h-12 bg-white/[0.04]" />
                         <div className="text-center">
                             <p className="text-3xl font-bold text-cyber-green font-mono">{results.virustotal_data.harmless_count}</p>
-                            <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-1">Harmless</p>
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mt-1">Clean</p>
                         </div>
-                        <div className="w-px h-12 bg-white/[0.06]" />
+                        <div className="w-px h-12 bg-white/[0.04]" />
                         <div className="text-center">
-                            <p className="text-3xl font-bold text-gray-500 font-mono">{results.virustotal_data.total_engines}</p>
-                            <p className="text-[10px] text-gray-600 uppercase tracking-wider mt-1">Engines</p>
+                            <p className="text-3xl font-bold text-white/30 font-mono">{results.virustotal_data.total_engines}</p>
+                            <p className="text-[9px] text-white/15 uppercase tracking-wider mt-1">Engines</p>
                         </div>
                     </div>
-                </AccordionSection>
+                </Section>
             )}
 
-            {/* Hunter.io */}
-            {results.hunter_data && (
-                <AccordionSection
-                    title="Hunter.io Emails"
-                    icon={FaEnvelope}
-                    iconColor="text-cyber-yellow"
-                    borderColor="border-cyber-yellow/15"
-                >
+            {/* Hunter Emails */}
+            {results.hunter_data && results.hunter_data.emails?.length > 0 && (
+                <Section title="Hunter.io Emails" icon={FaEnvelope} gradient="from-amber-400 to-orange-500" count={results.hunter_data.emails.length}>
                     <div className="space-y-2 mt-4">
-                        {results.hunter_data.emails?.map((email: any, idx: number) => (
-                            <div key={idx} className="p-3 bg-white/[0.02] rounded-xl border border-white/[0.04] flex justify-between items-center">
+                        {results.hunter_data.emails.map((e: any, i: number) => (
+                            <div key={i} className="flex justify-between items-center p-3 bg-white/[0.015] rounded-xl border border-white/[0.03]">
                                 <div>
-                                    <p className="text-white font-mono text-xs">{email.value}</p>
-                                    <p className="text-[10px] text-gray-600">{email.position || 'Unknown Position'}</p>
+                                    <p className="text-white/60 font-mono text-[11px]">{e.value}</p>
+                                    <p className="text-[10px] text-white/20">{e.position || '—'}</p>
                                 </div>
-                                <span className={`text-[10px] px-2 py-0.5 rounded-lg ${email.type === 'personal' ? 'bg-cyber-blue/10 text-cyber-blue border border-cyber-blue/20' : 'bg-white/[0.04] text-gray-500'
-                                    }`}>
-                                    {email.type}
-                                </span>
+                                <span className="tag">{e.type}</span>
                             </div>
                         ))}
                     </div>
-                </AccordionSection>
+                </Section>
             )}
 
             {/* Google Dorking */}
             {results.google_dorking_data && results.google_dorking_data.total_results > 0 && (
-                <AccordionSection
-                    title="Google Dorking"
-                    icon={FaSearch}
-                    iconColor="text-cyber-green"
-                    borderColor="border-cyber-green/15"
-                >
+                <Section title="Google Dorking" icon={FaSearch} gradient="from-green-400 to-emerald-500" count={results.google_dorking_data.total_results}>
                     <div className="space-y-3 mt-4">
-                        {results.google_dorking_data.results?.map((result: any, idx: number) => (
-                            <div key={idx} className="p-4 bg-white/[0.02] rounded-xl border border-white/[0.04] hover:border-cyber-green/20 transition-all">
-                                <h4 className="text-cyber-green font-semibold text-sm mb-1">{result.title}</h4>
-                                <p className="text-[10px] text-cyber-cyan font-mono break-all mb-2">{result.link}</p>
-                                {result.snippet && (
-                                    <p className="text-xs text-gray-500 italic">"{result.snippet}"</p>
-                                )}
-                                <div className="mt-2 flex justify-end">
-                                    <a href={result.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyber-green hover:underline">
-                                        Inspect Source →
-                                    </a>
-                                </div>
+                        {results.google_dorking_data.results?.map((r: any, i: number) => (
+                            <div key={i} className="p-4 bg-white/[0.015] rounded-xl border border-white/[0.03] hover:border-white/[0.06] transition-colors">
+                                <h4 className="text-cyber-green/70 font-semibold text-[11px] mb-1">{r.title}</h4>
+                                <p className="text-[10px] text-cyber-cyan/30 font-mono break-all mb-1">{r.link}</p>
+                                {r.snippet && <p className="text-[10px] text-white/20 italic">"{r.snippet}"</p>}
+                                <a href={r.link} target="_blank" rel="noopener noreferrer" className="text-[10px] text-cyber-green/40 hover:text-cyber-green transition-colors mt-2 inline-flex items-center gap-1">
+                                    Open <FaExternalLinkAlt className="text-[8px]" />
+                                </a>
                             </div>
                         ))}
                     </div>
-                </AccordionSection>
+                </Section>
             )}
 
             {/* Recommendations */}
             {results.correlated_intel?.recommendations?.length > 0 && (
-                <AccordionSection
-                    title="Recommendations"
-                    icon={FaExclamationTriangle}
-                    iconColor="text-cyber-yellow"
-                    borderColor="border-cyber-yellow/15"
-                    defaultOpen={true}
-                >
-                    <ul className="space-y-2 mt-4">
-                        {results.correlated_intel.recommendations.map((rec: string, idx: number) => (
-                            <li key={idx} className="text-gray-300 flex items-start text-xs gap-2">
-                                <span className="text-cyber-yellow mt-0.5">►</span>
-                                <span>{rec}</span>
+                <Section title="Recommendations" icon={FaExclamationTriangle} gradient="from-amber-400 to-orange-500" defaultOpen>
+                    <ul className="space-y-2.5 mt-4">
+                        {results.correlated_intel.recommendations.map((r: string, i: number) => (
+                            <li key={i} className="flex items-start gap-2.5 text-[11px] text-white/40">
+                                <span className="text-cyber-yellow/50 mt-0.5 text-[10px]">►</span>
+                                <span>{r}</span>
                             </li>
                         ))}
                     </ul>
-                </AccordionSection>
+                </Section>
             )}
         </motion.div>
     )
